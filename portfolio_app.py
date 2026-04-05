@@ -1,6 +1,8 @@
 import io
 import re
 import time
+import json
+import base64
 from datetime import datetime, timedelta
 
 import requests
@@ -10,6 +12,49 @@ import yfinance as yf
 import plotly.express as px
 import plotly.graph_objects as go
 from bs4 import BeautifulSoup
+
+# ─── GitHub クラウド保存 ──────────────────────────────────────────
+GITHUB_REPO = "teruk1771-alt/portfolio-app"
+GITHUB_DATA_PATH = "data/portfolio.json"
+
+def _github_headers() -> dict:
+    token = st.secrets.get("GITHUB_TOKEN", "")
+    return {"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"}
+
+def load_portfolio_from_github() -> list:
+    """GitHubからポートフォリオデータを読み込む"""
+    try:
+        token = st.secrets.get("GITHUB_TOKEN", "")
+        if not token:
+            return []
+        url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{GITHUB_DATA_PATH}"
+        resp = requests.get(url, headers=_github_headers(), timeout=10)
+        if resp.status_code == 200:
+            content = base64.b64decode(resp.json()["content"]).decode("utf-8")
+            return json.loads(content)
+    except Exception:
+        pass
+    return []
+
+def save_portfolio_to_github(holdings: list) -> bool:
+    """GitHubにポートフォリオデータを保存する"""
+    try:
+        token = st.secrets.get("GITHUB_TOKEN", "")
+        if not token:
+            return False
+        url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{GITHUB_DATA_PATH}"
+        content = base64.b64encode(
+            json.dumps(holdings, ensure_ascii=False, indent=2).encode()
+        ).decode()
+        # 既存ファイルのSHAを取得（更新時に必要）
+        get_resp = requests.get(url, headers=_github_headers(), timeout=10)
+        payload: dict = {"message": "Update portfolio data", "content": content}
+        if get_resp.status_code == 200:
+            payload["sha"] = get_resp.json()["sha"]
+        put_resp = requests.put(url, headers=_github_headers(), json=payload, timeout=15)
+        return put_resp.status_code in (200, 201)
+    except Exception:
+        return False
 
 # yfinance industry → 東証業種分類マッピング
 INDUSTRY_TO_JP_SECTOR = {
@@ -908,6 +953,26 @@ st.sidebar.header("保有銘柄の登録")
 
 if "holdings" not in st.session_state:
     st.session_state.holdings = []
+    # 起動時にGitHubからデータを自動読み込み
+    cloud_data = load_portfolio_from_github()
+    if cloud_data:
+        st.session_state.holdings = cloud_data
+
+# ─── サイドバー：クラウド保存 ──────────────────────────────────────
+st.sidebar.divider()
+st.sidebar.subheader("☁️ クラウド保存")
+if st.secrets.get("GITHUB_TOKEN", ""):
+    if st.sidebar.button("💾 スマホと共有（GitHubに保存）", use_container_width=True):
+        with st.sidebar:
+            with st.spinner("保存中..."):
+                ok = save_portfolio_to_github(st.session_state.holdings)
+        if ok:
+            st.sidebar.success("✅ 保存しました！スマホを更新すると反映されます")
+        else:
+            st.sidebar.error("❌ 保存に失敗しました")
+else:
+    st.sidebar.info("Streamlit CloudのSecretsに\nGITHUB_TOKENを設定すると\nスマホと共有できます")
+st.sidebar.divider()
 
 with st.sidebar.form("add_stock", clear_on_submit=True):
     st.subheader("銘柄を追加")
