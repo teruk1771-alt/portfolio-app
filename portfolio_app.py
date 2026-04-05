@@ -1,0 +1,1404 @@
+import io
+import re
+import time
+from datetime import datetime, timedelta
+
+import requests
+import streamlit as st
+import pandas as pd
+import yfinance as yf
+import plotly.express as px
+import plotly.graph_objects as go
+from bs4 import BeautifulSoup
+
+# yfinance industry → 東証業種分類マッピング
+INDUSTRY_TO_JP_SECTOR = {
+    # 食料品
+    "Farm Products": "食料品", "Packaged Foods": "食料品",
+    "Beverages - Non-Alcoholic": "食料品", "Beverages - Brewers": "食料品",
+    "Confectioners": "食料品",
+    # 繊維製品
+    "Textile Manufacturing": "繊維製品", "Apparel Manufacturing": "繊維製品",
+    # パルプ・紙
+    "Paper & Paper Products": "パルプ・紙",
+    # 化学
+    "Chemicals": "化学", "Specialty Chemicals": "化学",
+    "Agricultural Inputs": "化学",
+    # 医薬品
+    "Drug Manufacturers - General": "医薬品",
+    "Drug Manufacturers - Specialty & Generic": "医薬品",
+    "Biotechnology": "医薬品",
+    # 石油・石炭
+    "Oil & Gas Integrated": "石油・石炭", "Oil & Gas E&P": "石油・石炭",
+    "Oil & Gas Refining & Marketing": "石油・石炭",
+    # ゴム製品
+    "Rubber & Plastics": "ゴム製品", "Auto Parts": "ゴム製品",
+    # ガラス・土石
+    "Building Materials": "ガラス・土石",
+    # 鉄鋼
+    "Steel": "鉄鋼",
+    # 非鉄金属
+    "Aluminum": "非鉄金属", "Copper": "非鉄金属",
+    "Other Industrial Metals & Mining": "非鉄金属",
+    # 金属製品
+    "Metal Fabrication": "金属製品",
+    # 機械
+    "Farm & Heavy Construction Machinery": "機械",
+    "Specialty Industrial Machinery": "機械",
+    "Industrial Machinery & Equipment": "機械",
+    # 電気機器
+    "Electronic Components": "電気機器",
+    "Consumer Electronics": "電気機器",
+    "Scientific & Technical Instruments": "電気機器",
+    "Electrical Equipment & Parts": "電気機器",
+    "Semiconductors": "電気機器",
+    "Semiconductor Equipment & Materials": "電気機器",
+    # 輸送用機器
+    "Auto Manufacturers": "輸送用機器",
+    # 精密機器
+    "Medical Instruments & Supplies": "精密機器",
+    "Medical Devices": "精密機器",
+    "Diagnostics & Research": "精密機器",
+    # その他製品
+    "Packaging & Containers": "その他製品",
+    "Building Products & Equipment": "その他製品",
+    "Business Equipment & Supplies": "その他製品",
+    "Leisure": "その他製品",
+    # 電気・ガス
+    "Utilities - Regulated Electric": "電気・ガス",
+    "Utilities - Renewable": "電気・ガス",
+    "Utilities - Regulated Gas": "電気・ガス",
+    "Utilities - Diversified": "電気・ガス",
+    "Utilities - Independent Power Producers": "電気・ガス",
+    # 陸運
+    "Railroads": "陸運", "Trucking": "陸運",
+    # 海運
+    "Marine Shipping": "海運",
+    # 空運
+    "Airlines": "空運",
+    # 倉庫・運輸
+    "Integrated Freight & Logistics": "倉庫・運輸",
+    "Infrastructure Operations": "倉庫・運輸",
+    # 情報・通信
+    "Telecom Services": "情報・通信",
+    "Information Technology Services": "情報・通信",
+    "Software - Application": "情報・通信",
+    "Software - Infrastructure": "情報・通信",
+    "Internet Content & Information": "情報・通信",
+    "Communication Equipment": "情報・通信",
+    "Electronic Gaming & Multimedia": "情報・通信",
+    # 卸売
+    "Conglomerates": "卸売", "Industrial Distribution": "卸売",
+    # 小売
+    "Specialty Retail": "小売",
+    "Home Improvement Retail": "小売",
+    "Department Stores": "小売",
+    "Discount Stores": "小売",
+    "Grocery Stores": "小売",
+    # 銀行
+    "Banks - Regional": "銀行", "Banks - Diversified": "銀行",
+    # 証券・先物
+    "Capital Markets": "証券・先物",
+    # 保険
+    "Insurance - Property & Casualty": "保険",
+    "Insurance - Life": "保険",
+    "Insurance - Diversified": "保険",
+    "Insurance Brokers": "保険",
+    # その他金融
+    "Credit Services": "その他金融",
+    "Financial Data & Stock Exchanges": "その他金融",
+    "Financial Conglomerates": "その他金融",
+    # 不動産
+    "Real Estate Services": "不動産",
+    "Real Estate - Diversified": "不動産",
+    "Real Estate - Development": "不動産",
+    "REIT - Diversified": "不動産",
+    "REIT - Residential": "不動産",
+    "REIT - Office": "不動産",
+    "REIT - Retail": "不動産",
+    # 建設
+    "Residential Construction": "建設",
+    "Engineering & Construction": "建設",
+    # サービス
+    "Consulting Services": "サービス",
+    "Staffing & Employment Services": "サービス",
+    "Education & Training Services": "サービス",
+    "Security & Protection Services": "サービス",
+    "Waste Management": "サービス",
+    "Rental & Leasing Services": "サービス",
+    # 家具・インテリア（小売寄り）
+    "Furnishings, Fixtures & Appliances": "小売",
+}
+
+# yfinance sector をフォールバックに使う（industryが未マッチ時）
+SECTOR_EN_TO_JP_FALLBACK = {
+    "Consumer Defensive": "食料品",
+    "Consumer Staples": "食料品",
+    "Healthcare": "医薬品",
+    "Utilities": "電気・ガス",
+    "Communication Services": "情報・通信",
+    "Financial Services": "その他金融",
+    "Financials": "その他金融",
+    "Energy": "石油・石炭",
+    "Basic Materials": "化学",
+    "Materials": "化学",
+    "Industrials": "機械",
+    "Consumer Cyclical": "小売",
+    "Consumer Discretionary": "小売",
+    "Technology": "情報・通信",
+    "Information Technology": "情報・通信",
+    "Real Estate": "不動産",
+}
+
+# 東証業種 → 景気区分
+DEFENSIVE_SECTORS = {
+    "食料品", "医薬品", "電気・ガス", "情報・通信",
+    "陸運", "倉庫・運輸", "パルプ・紙",
+    # 安定的な需要・収益基盤を持つ業種
+    "サービス",      # 教育・コンサル・住宅メンテ等、生活・企業に不可欠
+    "その他製品",    # 建材・オフィス家具等、安定需要
+    "金属製品",      # 建築・住宅向け製品、安定需要
+}
+CYCLICAL_SECTORS = {
+    "化学", "鉄鋼", "非鉄金属", "機械", "電気機器", "輸送用機器",
+    "銀行", "証券・先物", "保険", "その他金融",
+    "不動産", "建設", "海運", "空運",
+    "石油・石炭", "ゴム製品", "ガラス・土石",
+    "繊維製品", "卸売", "小売", "精密機器",
+}
+
+SECTOR_OPTIONS = sorted(DEFENSIVE_SECTORS | CYCLICAL_SECTORS)
+
+DROP_ALERT_THRESHOLD = -0.20  # 20%下落
+TAX_RATE_TOKUTEI = 0.20315  # 特定口座の配当課税率（所得税15.315% + 住民税5%）
+IRBANK_MIN_YEARS = 10  # スクリーニングに必要な最低年数
+
+
+# ─── IRBANKスクレイピング & スクリーニング ──────────────────────
+
+def _parse_irbank_num(s: str) -> float | None:
+    """IRBANK の数値テキスト（「1.93兆」「-4550億」「211.69」等）を数値に変換"""
+    s = s.strip().replace(",", "").replace("*", "").replace("△", "-")
+    if not s or s == "-":
+        return None
+    try:
+        if "兆" in s:
+            return float(s.replace("兆", "")) * 1_0000_0000_0000
+        if "億" in s:
+            return float(s.replace("億", "")) * 1_0000_0000
+        if "万" in s:
+            return float(s.replace("万", "")) * 1_0000
+        return float(s)
+    except ValueError:
+        return None
+
+
+@st.cache_data(ttl=86400, show_spinner=False)
+def fetch_irbank_data(stock_code: str) -> dict | None:
+    """IRBANKから過去の業績・財務・CF・配当データを取得"""
+    url = f"https://irbank.net/{stock_code}/results"
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    try:
+        r = requests.get(url, headers=headers, timeout=15)
+        r.raise_for_status()
+    except Exception:
+        return None
+
+    soup = BeautifulSoup(r.text, "html.parser")
+    tables = soup.find_all("table", class_="bar")
+    if len(tables) < 4:
+        return None
+
+    def parse_table(table) -> dict[str, list]:
+        thead = table.find("thead")
+        cols = [th.get_text(strip=True) for th in thead.find_all("th")]
+        data: dict[str, list] = {c: [] for c in cols}
+        for row in table.find("tbody").find_all("tr"):
+            tds = row.find_all("td")
+            for i, td in enumerate(tds):
+                if i < len(cols):
+                    text_span = td.find("span", class_="text")
+                    val = text_span.get_text(strip=True) if text_span else td.get_text(strip=True)
+                    data[cols[i]].append(val)
+        return data
+
+    t_perf = parse_table(tables[0])   # 業績
+    t_fin = parse_table(tables[1])    # 財務
+    t_cf = parse_table(tables[2])     # CF
+    t_div = parse_table(tables[3])    # 配当
+
+    return {
+        "performance": t_perf,
+        "financial": t_fin,
+        "cashflow": t_cf,
+        "dividend": t_div,
+    }
+
+
+def _is_uptrend(values: list[float], allow_dips: int = 3) -> bool:
+    """全体的に右肩上がりかを判定（多少の下落は許容）"""
+    if len(values) < 3:
+        return False
+    dip_count = 0
+    for i in range(1, len(values)):
+        if values[i] < values[i - 1]:
+            dip_count += 1
+    # 下落回数が許容範囲内、かつ最後の値が最初の値より大きい
+    return dip_count <= allow_dips and values[-1] > values[0]
+
+
+def _is_dividend_uptrend(values: list[float]) -> bool:
+    """配当が無配・減配なく右肩上がりか（記念配当による一時的な増を除く）"""
+    if len(values) < 3:
+        return False
+    for i in range(1, len(values)):
+        if values[i] <= 0:
+            return False  # 無配
+        if values[i] < values[i - 1] * 0.95:
+            return False  # 5%超の減配
+    return values[-1] > values[0]
+
+
+def screen_stock(stock_code: str) -> dict | None:
+    """1銘柄のIRBANKデータを取得し、8項目スクリーニングを実施"""
+    raw = fetch_irbank_data(stock_code)
+    if not raw:
+        return None
+
+    perf = raw["performance"]
+    fin = raw["financial"]
+    cf = raw["cashflow"]
+    div = raw["dividend"]
+
+    years = perf.get("年度", [])
+    if not years:
+        return None
+
+    # 予想行と古いデータを除外し、直近10年分を取得
+    valid_mask = [not y.endswith("予") for y in years]
+    n = len(years)
+
+    def extract(table_data: dict, col_name: str) -> list[float]:
+        vals = table_data.get(col_name, [])
+        result = []
+        for i, v in enumerate(vals):
+            if i < n and valid_mask[i]:
+                parsed = _parse_irbank_num(v)
+                if parsed is not None:
+                    result.append(parsed)
+        return result[-IRBANK_MIN_YEARS:]
+
+    # 収益 / 営業収益 / 売上 / 売上高 のいずれか
+    revenue = []
+    for col_candidate in ["収益", "営業収益", "売上高", "売上"]:
+        revenue = extract(perf, col_candidate)
+        if revenue:
+            break
+
+    eps = extract(perf, "EPS")
+    op_margin_raw = extract(perf, "営利率")
+    # 「株主資本比率」or「自己資本比率」
+    equity_ratio_raw = extract(fin, "株主資本比率")
+    if not equity_ratio_raw:
+        equity_ratio_raw = extract(fin, "自己資本比率")
+    op_cf = extract(cf, "営業CF")
+    cash = extract(cf, "現金等")
+
+    # 配当
+    div_years = div.get("年度", [])
+    div_valid = [not y.endswith("予") for y in div_years]
+    div_vals_raw = div.get("一株配当", [])
+    div_vals = []
+    for i, v in enumerate(div_vals_raw):
+        if i < len(div_valid) and div_valid[i]:
+            parsed = _parse_irbank_num(v)
+            if parsed is not None:
+                div_vals.append(parsed)
+    div_vals = div_vals[-IRBANK_MIN_YEARS:]
+
+    payout_raw = div.get("配当性向", [])
+    payout_vals = []
+    for i, v in enumerate(payout_raw):
+        if i < len(div_valid) and div_valid[i]:
+            parsed = _parse_irbank_num(v)
+            if parsed is not None:
+                payout_vals.append(parsed)
+    payout_vals = payout_vals[-IRBANK_MIN_YEARS:]
+
+    # データ不足チェック
+    if len(revenue) < 5 or len(eps) < 5:
+        return None
+
+    # ─── 8項目判定 ───
+    results = {}
+
+    # ① 売上が全体的に右肩上がり
+    results["売上成長"] = _is_uptrend(revenue)
+
+    # ② EPSが全体的に右肩上がり
+    results["EPS成長"] = _is_uptrend(eps)
+
+    # ③ 営業利益率10%以上（10年平均）
+    avg_margin = sum(op_margin_raw) / len(op_margin_raw) if op_margin_raw else 0
+    results["営業利益率10%↑"] = avg_margin >= 10
+
+    # ④ 自己資本比率40%以上（10年すべて）
+    latest_equity = equity_ratio_raw[-1] if equity_ratio_raw else 0
+    results["自己資本比率40%↑"] = all(v >= 40 for v in equity_ratio_raw) if equity_ratio_raw else False
+
+    # ⑤ 営業CFが赤字なし
+    results["営業CF黒字"] = all(v > 0 for v in op_cf) if op_cf else False
+
+    # ⑥ 現金が全体的に右肩上がり
+    results["現金増加"] = _is_uptrend(cash) if len(cash) >= 3 else False
+
+    # ⑦ 配当が無配・減配なく右肩上がり
+    results["連続増配"] = _is_dividend_uptrend(div_vals) if div_vals else False
+
+    # ⑧ 配当性向50%以下（10年平均）
+    avg_payout = sum(payout_vals) / len(payout_vals) if payout_vals else 100
+    results["配当性向50%↓"] = 0 < avg_payout <= 50
+
+    score = sum(results.values())
+
+    return {
+        "criteria": results,
+        "score": score,
+        "details": {
+            "売上(直近)": revenue[-1] if revenue else 0,
+            "EPS(直近)": eps[-1] if eps else 0,
+            "営業利益率(10年平均)": round(avg_margin, 1),
+            "自己資本比率(直近)": round(latest_equity, 1),
+            "営業CF(直近)": op_cf[-1] if op_cf else 0,
+            "現金等(直近)": cash[-1] if cash else 0,
+            "一株配当(直近)": div_vals[-1] if div_vals else 0,
+            "配当性向(10年平均)": round(avg_payout, 1),
+            "データ年数": len(revenue),
+        },
+    }
+
+
+@st.cache_data(ttl=86400, show_spinner=False)
+def fetch_high_dividend_candidates(min_yield: float = 3.5, max_pages: int = 8) -> list[tuple[str, float]]:
+    """Yahoo Financeから配当利回りランキングを取得し、min_yield%以上の銘柄を返す"""
+    all_stocks = []
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    for page in range(1, max_pages + 1):
+        url = f"https://finance.yahoo.co.jp/stocks/ranking/dividendYield?page={page}"
+        try:
+            r = requests.get(url, headers=headers, timeout=15)
+            soup = BeautifulSoup(r.text, "html.parser")
+            table = soup.find("table")
+            if not table:
+                break
+            rows = table.find_all("tr")[1:]
+            if not rows:
+                break
+            for row in rows:
+                cells = row.find_all("td")
+                if len(cells) < 5:
+                    continue
+                name_text = cells[0].get_text(strip=True)
+                code_match = re.search(r"(\d{4})", name_text)
+                if not code_match:
+                    continue
+                code = code_match.group(1)
+                yield_text = cells[4].get_text(strip=True)
+                yield_text = yield_text.replace("+", "").replace("-", "").replace("%", "")
+                try:
+                    div_yield = float(yield_text)
+                except ValueError:
+                    continue
+                if div_yield >= min_yield:
+                    all_stocks.append((code, div_yield))
+                else:
+                    return all_stocks  # 利回り降順なのでこれ以降は不要
+            time.sleep(0.3)
+        except Exception:
+            break
+    return all_stocks
+
+
+def get_economy_type(sector: str) -> str:
+    if sector in DEFENSIVE_SECTORS:
+        return "ディフェンシブ"
+    if sector in CYCLICAL_SECTORS:
+        return "景気敏感"
+    return "―"
+
+
+# ─── 日本語銘柄名取得 ─────────────────────────────────────────
+
+@st.cache_data(ttl=86400)
+def fetch_jp_name(ticker: str) -> str:
+    """Yahoo Finance Japanから日本語銘柄名を取得"""
+    code = ticker.replace(".T", "")
+    try:
+        url = f"https://finance.yahoo.co.jp/quote/{code}.T"
+        resp = requests.get(url, timeout=5, headers={"User-Agent": "Mozilla/5.0"})
+        if resp.status_code == 200:
+            soup = BeautifulSoup(resp.text, "html.parser")
+            # ページタイトルから銘柄名を抽出 (例: "トヨタ自動車(株)【7203】...")
+            title = soup.find("title")
+            if title:
+                t = title.get_text()
+                # "トヨタ自動車(株)【7203】..." のパターン
+                m = re.match(r"(.+?)[\(（(]株[\)）)]", t)
+                if m:
+                    return m.group(1).strip()
+                # タイトルから【コード】より前の部分
+                m2 = re.match(r"(.+?)【", t)
+                if m2:
+                    return m2.group(1).strip()
+    except Exception:
+        pass
+    return ""
+
+
+# ─── 配当支払い月取得 ────────────────────────────────────────────
+
+@st.cache_data(ttl=86400)
+def fetch_dividend_months(ticker: str) -> list[int]:
+    """yfinance の配当履歴から直近2年の支払い月リストを返す（重複除去）"""
+    try:
+        divs = yf.Ticker(ticker).dividends
+        if divs.empty:
+            return []
+        two_years_ago = datetime.now() - timedelta(days=730)
+        recent = divs[divs.index >= two_years_ago.strftime("%Y-%m-%d")]
+        if recent.empty:
+            return []
+        months = sorted(set(int(d.month) for d in recent.index))
+        return months
+    except Exception:
+        return []
+
+
+# ─── yfinance データ取得 ────────────────────────────────────────
+
+@st.cache_data(ttl=3600)
+def fetch_stock_info(ticker: str) -> dict:
+    """yfinanceから現在株価・配当・セクター・会社名を取得"""
+    try:
+        stock = yf.Ticker(ticker)
+        info = stock.info
+        current_price = info.get("currentPrice") or info.get("regularMarketPrice", 0)
+        dividend_yield = info.get("dividendYield", 0) or 0
+        trailing_dividend = info.get("trailingAnnualDividendRate", 0) or 0
+        sector_en = info.get("sector", "")
+        industry_en = info.get("industry", "")
+        # まず industry で詳細マッチ、なければ sector でフォールバック
+        sector_jp = INDUSTRY_TO_JP_SECTOR.get(industry_en, "")
+        if not sector_jp:
+            sector_jp = SECTOR_EN_TO_JP_FALLBACK.get(sector_en, "")
+        short_name = info.get("shortName", "") or ""
+        long_name = info.get("longName", "") or ""
+
+        # trailingAnnualDividendRate がない場合（ETF等）、配当履歴から直近1年分を合算
+        if not trailing_dividend:
+            try:
+                divs = stock.dividends
+                if not divs.empty:
+                    one_year_ago = datetime.now() - timedelta(days=365)
+                    recent = divs[divs.index >= one_year_ago.strftime("%Y-%m-%d")]
+                    if not recent.empty:
+                        trailing_dividend = float(recent.sum())
+                        if current_price and not dividend_yield:
+                            dividend_yield = trailing_dividend / current_price
+            except Exception:
+                pass
+
+        # ETF/REITなどセクター情報がない場合、名前から推定
+        if not sector_jp:
+            name_upper = (long_name + " " + short_name).upper()
+            quote_type = info.get("quoteType", "")
+            if "REIT" in name_upper:
+                sector_jp = "不動産"
+            elif quote_type == "ETF":
+                sector_jp = "その他ETF"
+
+        return {
+            "current_price": current_price,
+            "dividend_yield": dividend_yield,
+            "annual_dividend_per_share": trailing_dividend,
+            "sector_en": sector_en,
+            "sector_jp": sector_jp,
+            "short_name": short_name,
+            "long_name": long_name,
+        }
+    except Exception:
+        return {
+            "current_price": 0, "dividend_yield": 0,
+            "annual_dividend_per_share": 0,
+            "sector_en": "", "sector_jp": "",
+            "short_name": "", "long_name": "",
+        }
+
+
+# ─── 楽天証券CSV パーサー ──────────────────────────────────────
+
+def _parse_num(s: str) -> float:
+    s = str(s).strip().replace(",", "").replace("，", "")
+    if not s or s in ("nan", "-", "－"):
+        return 0.0
+    try:
+        return float(s)
+    except ValueError:
+        return 0.0
+
+
+def _detect_account_type(lines: list[str], header_idx: int) -> str:
+    """ヘッダー行より前のセクション見出しから口座種別を判定"""
+    for i in range(header_idx - 1, max(header_idx - 5, -1), -1):
+        line = lines[i].strip().strip('"').replace("■", "")
+        if "NISA" in line or "ＮＩＳＡまたはnisa" in line.lower():
+            return "NISA"
+        if "特定" in line:
+            return "特定"
+    return "特定"  # デフォルト
+
+
+def _detect_csv_format(lines: list[str]) -> str:
+    """CSVフォーマットを判定: 'all' (全資産) or 'jp' (国内株式)"""
+    for line in lines:
+        if "銘柄コード・ティッカー" in line:
+            return "all"
+        if "銘柄コード" in line:
+            return "jp"
+    return "unknown"
+
+
+def _parse_all_format(lines: list[str]) -> list[dict]:
+    """assetbalance(all) フォーマットをパース。
+    種別,銘柄コード・ティッカー,銘柄,口座,保有数量,...の形式。
+    国内株式のみ抽出（投資信託はスキップ）。
+    """
+    header_idx = None
+    for i, line in enumerate(lines):
+        if "銘柄コード・ティッカー" in line:
+            header_idx = i
+            break
+    if header_idx is None:
+        return []
+
+    # ヘッダー行＋データ行を収集
+    section_lines = [lines[header_idx]]
+    for j in range(header_idx + 1, len(lines)):
+        line = lines[j].strip()
+        if not line:
+            continue
+        if line.startswith("■") or line.startswith('"■'):
+            break
+        section_lines.append(line)
+
+    if len(section_lines) < 2:
+        return []
+
+    try:
+        df = pd.read_csv(io.StringIO("\n".join(section_lines)), dtype=str)
+    except Exception:
+        return []
+
+    cols = list(df.columns)
+    type_col = next((c for c in cols if "種別" in c), None)
+    ticker_col = next((c for c in cols if "銘柄コード" in c), None)
+    name_col = next((c for c in cols if c == "銘柄" or "銘柄名" in c), None)
+    account_col = next((c for c in cols if "口座" in c), None)
+    shares_col = next((c for c in cols if "保有数量" in c), None)
+    cost_col = next((c for c in cols if "平均取得価額" in c), None)
+    cur_price_col = next((c for c in cols if c.startswith("現在値") and "前日比" not in c and "更新" not in c), None)
+    market_val_col = next((c for c in cols if "時価評価額" in c and "円" in c), None)
+
+    if not ticker_col or not shares_col:
+        return []
+
+    merged: dict[tuple[str, str], dict] = {}
+
+    for _, row in df.iterrows():
+        # 国内株式のみ（投資信託はスキップ）
+        if type_col:
+            stype = str(row[type_col]).strip().strip('"')
+            if "国内株式" not in stype:
+                continue
+
+        raw_ticker = str(row[ticker_col]).strip().strip('"')
+        if not raw_ticker or raw_ticker == "nan":
+            continue
+
+        shares = int(_parse_num(row[shares_col]))
+        if shares <= 0:
+            continue
+
+        # 口座種別
+        account_type = "特定"
+        if account_col:
+            acct_str = str(row[account_col]).strip().strip('"')
+            if "NISA" in acct_str or "ＮＩＳＡまたはnisa" in acct_str.lower():
+                account_type = "NISA"
+            elif "特定" in acct_str:
+                account_type = "特定"
+
+        cost_total = _parse_num(row[cost_col]) * shares if cost_col else 0.0
+        csv_price = _parse_num(row[cur_price_col]) if cur_price_col else 0.0
+        csv_market_val = _parse_num(row[market_val_col]) if market_val_col else 0.0
+
+        name = ""
+        if name_col:
+            name = str(row[name_col]).strip().strip('"')
+            if name == "nan":
+                name = ""
+
+        key = (raw_ticker, account_type)
+        if key in merged:
+            m = merged[key]
+            m["total_cost_amount"] += cost_total
+            m["total_shares"] += shares
+            m["csv_market_val"] += csv_market_val
+        else:
+            merged[key] = {
+                "name": name,
+                "total_shares": shares,
+                "total_cost_amount": cost_total,
+                "csv_price": csv_price,
+                "csv_market_val": csv_market_val,
+                "account": account_type,
+            }
+
+    return _merged_to_holdings(merged)
+
+
+def _parse_jp_format(lines: list[str]) -> list[dict]:
+    """assetbalance(JP) フォーマットをパース。
+    ■特定口座/■NISAセクションごとにヘッダー行が出現する形式。
+    """
+    header_indices = [
+        i for i, line in enumerate(lines)
+        if "銘柄コード" in line
+    ]
+    if not header_indices:
+        return []
+
+    section_info: list[tuple[pd.DataFrame, str]] = []
+    for idx, h_idx in enumerate(header_indices):
+        account_type = _detect_account_type(lines, h_idx)
+        if idx + 1 < len(header_indices):
+            end_idx = header_indices[idx + 1]
+        else:
+            end_idx = len(lines)
+        section_lines = [lines[h_idx]]
+        for j in range(h_idx + 1, end_idx):
+            line = lines[j].strip()
+            if not line:
+                continue
+            if line.startswith("■") or line.startswith('"■'):
+                continue
+            first = line.lstrip('"')
+            if first and first[0].isdigit():
+                section_lines.append(line)
+        if len(section_lines) < 2:
+            continue
+        try:
+            df = pd.read_csv(io.StringIO("\n".join(section_lines)), dtype=str)
+            section_info.append((df, account_type))
+        except Exception:
+            continue
+
+    if not section_info:
+        return []
+
+    merged: dict[tuple[str, str], dict] = {}
+
+    for df, account_type in section_info:
+        cols = list(df.columns)
+        ticker_col = next((c for c in cols if "銘柄コード" in c), None)
+        name_col = next((c for c in cols if "銘柄名" in c), None)
+        shares_col = next((c for c in cols if "保有数量" in c), None)
+        cost_col = next((c for c in cols if "平均取得価額" in c), None)
+        cost_total_col = next((c for c in cols if "取得総額" in c), None)
+        cur_price_col = next((c for c in cols if c.startswith("現在値") and "前日比" not in c), None)
+        market_val_col = next((c for c in cols if "時価評価額" in c), None)
+
+        if not ticker_col or not shares_col:
+            continue
+
+        for _, row in df.iterrows():
+            raw_ticker = str(row[ticker_col]).strip().strip('"')
+            if not raw_ticker or raw_ticker == "nan":
+                continue
+
+            shares = int(_parse_num(row[shares_col]))
+            if shares <= 0:
+                continue
+
+            if cost_total_col:
+                cost_total = _parse_num(row[cost_total_col])
+            elif cost_col:
+                cost_total = _parse_num(row[cost_col]) * shares
+            else:
+                cost_total = 0.0
+
+            csv_price = _parse_num(row[cur_price_col]) if cur_price_col else 0.0
+            csv_market_val = _parse_num(row[market_val_col]) if market_val_col else 0.0
+
+            name = ""
+            if name_col:
+                name = str(row[name_col]).strip().strip('"')
+                if name == "nan":
+                    name = ""
+
+            key = (raw_ticker, account_type)
+            if key in merged:
+                m = merged[key]
+                m["total_cost_amount"] += cost_total
+                m["total_shares"] += shares
+                m["csv_market_val"] += csv_market_val
+            else:
+                merged[key] = {
+                    "name": name,
+                    "total_shares": shares,
+                    "total_cost_amount": cost_total,
+                    "csv_price": csv_price,
+                    "csv_market_val": csv_market_val,
+                    "account": account_type,
+                }
+
+    return _merged_to_holdings(merged)
+
+
+def _merged_to_holdings(merged: dict) -> list[dict]:
+    """merged dict を holdings リストに変換"""
+    holdings = []
+    for (raw_ticker, _acct), m in merged.items():
+        shares = m["total_shares"]
+        avg_cost = m["total_cost_amount"] / shares if shares else 0.0
+
+        if raw_ticker.isdigit() and len(raw_ticker) == 4:
+            ticker = raw_ticker + ".T"
+        else:
+            ticker = raw_ticker.upper()
+
+        holdings.append({
+            "ticker": ticker,
+            "shares": shares,
+            "cost": round(avg_cost, 2),
+            "sector": "",
+            "name": m["name"],
+            "csv_price": m.get("csv_price", 0.0),
+            "account": m["account"],
+        })
+    return holdings
+
+
+def parse_rakuten_csv(text: str) -> list[dict]:
+    """楽天証券CSVテキスト（複数フォーマット対応）をパースして holdings リストを返す。
+    assetbalance(all) と assetbalance(JP) の両方に対応。
+    同一銘柄でも口座種別（特定/NISA）が異なれば別レコードとして保持する。
+    """
+    text = text.strip().lstrip("\ufeff")
+    if not text:
+        return []
+
+    lines = text.splitlines()
+    fmt = _detect_csv_format(lines)
+
+    if fmt == "all":
+        return _parse_all_format(lines)
+    else:
+        return _parse_jp_format(lines)
+
+
+# ─── ポートフォリオ構築 ─────────────────────────────────────────
+
+def build_portfolio_df(holdings: list[dict]) -> pd.DataFrame:
+    rows = []
+    for h in holdings:
+        info = fetch_stock_info(h["ticker"])
+        shares = h["shares"]
+        cost = h["cost"]
+        account = h.get("account", "特定")
+
+        # 現在株価: yfinance と CSV の値を比較し、乖離が大きい場合は CSV を優先
+        yf_price = info["current_price"]
+        csv_price = h.get("csv_price", 0.0)
+        if csv_price > 0 and yf_price > 0:
+            ratio = yf_price / csv_price
+            if ratio > 1.5 or ratio < 0.67:
+                current_price = csv_price
+            else:
+                current_price = yf_price
+        elif yf_price > 0:
+            current_price = yf_price
+        else:
+            current_price = csv_price
+
+        # 配当: 手動設定 > yfinance（株価乖離補正あり）
+        div_overrides = st.session_state.get("div_overrides", {})
+        manual_div = div_overrides.get(h["ticker"], 0.0)
+        if manual_div > 0:
+            annual_div = manual_div
+        else:
+            annual_div = info["annual_dividend_per_share"]
+            if csv_price > 0 and yf_price > 0 and current_price == csv_price:
+                split_ratio = csv_price / yf_price
+                annual_div = annual_div * split_ratio
+
+        # セクター
+        sector = h.get("sector", "")
+        if not sector or sector == "未分類":
+            sector = info["sector_jp"] or "未分類"
+            h["sector"] = sector
+
+        # 会社名（日本語優先）
+        name = h.get("name", "")
+        if not name:
+            name = fetch_jp_name(h["ticker"]) or info["short_name"] or info["long_name"] or ""
+            h["name"] = name
+
+        market_value = current_price * shares
+        total_cost = cost * shares
+        gain_pct = (current_price - cost) / cost if cost else 0
+        annual_div_total = annual_div * shares
+
+        # 税引後配当
+        tax_rate = 0.0 if account == "NISA" else TAX_RATE_TOKUTEI
+        annual_div_after_tax = annual_div_total * (1 - tax_rate)
+
+        div_yield = (annual_div / current_price) if current_price else 0
+        yield_on_cost = (annual_div / cost) if cost else 0
+
+        div_months = fetch_dividend_months(h["ticker"])
+        div_months_str = "・".join(f"{m}月" for m in div_months) if div_months else "―"
+
+        rows.append({
+            "銘柄": h["ticker"],
+            "会社名": name,
+            "口座": account,
+            "セクター": sector,
+            "景気区分": get_economy_type(sector),
+            "株数": shares,
+            "取得単価": cost,
+            "現在株価": current_price,
+            "評価額": market_value,
+            "取得総額": total_cost,
+            "損益率": gain_pct,
+            "年間配当/株": annual_div,
+            "年間配当(税引前)": annual_div_total,
+            "年間配当(税引後)": annual_div_after_tax,
+            "配当利回り(時価)": div_yield,
+            "取得価格利回り": yield_on_cost,
+            "配当月": div_months_str,
+            "_div_months": div_months,
+            "_annual_div_after_tax": annual_div_after_tax,
+        })
+
+    df = pd.DataFrame(rows)
+    if not df.empty:
+        total_div = df["年間配当(税引後)"].sum()
+        df["配当割合"] = df["年間配当(税引後)"] / total_div if total_div else 0
+    return df
+
+
+# ═══ Streamlit UI ═══════════════════════════════════════════════
+
+st.set_page_config(page_title="高配当株ポートフォリオ管理", layout="wide")
+st.title("高配当株ポートフォリオ管理ツール")
+
+# --- サイドバー: 銘柄入力 ---
+st.sidebar.header("保有銘柄の登録")
+
+if "holdings" not in st.session_state:
+    st.session_state.holdings = []
+
+with st.sidebar.form("add_stock", clear_on_submit=True):
+    st.subheader("銘柄を追加")
+    col1, col2 = st.columns(2)
+    new_ticker = col1.text_input("ティッカー", placeholder="8058.T")
+    new_shares = col2.number_input("株数", min_value=1, value=100, step=1)
+    new_cost = st.number_input("取得単価", min_value=0.01, value=1000.0, step=0.01)
+    new_account = st.selectbox("口座", ["特定", "NISA"])
+    new_sector = st.selectbox("セクター（空欄で自動取得）", ["自動取得"] + SECTOR_OPTIONS)
+    submitted = st.form_submit_button("追加")
+    if submitted and new_ticker:
+        st.session_state.holdings.append({
+            "ticker": new_ticker.upper().strip(),
+            "shares": int(new_shares),
+            "cost": float(new_cost),
+            "sector": "" if new_sector == "自動取得" else new_sector,
+            "account": new_account,
+            "name": "",
+        })
+        st.rerun()
+
+# 削除
+if st.session_state.holdings:
+    with st.sidebar.expander("銘柄を削除"):
+        labels = [
+            f"{h.get('name') or h['ticker']}（{h.get('account','特定')} {h['shares']}株）"
+            for h in st.session_state.holdings
+        ]
+        del_idx = st.selectbox("削除する銘柄", range(len(labels)), format_func=lambda i: labels[i])
+        if st.button("削除"):
+            st.session_state.holdings.pop(del_idx)
+            st.rerun()
+
+# --- 楽天証券CSV取り込み ---
+st.sidebar.divider()
+st.sidebar.header("楽天証券CSV取り込み")
+
+csv_tab1, csv_tab2 = st.sidebar.tabs(["貼り付け", "ファイル"])
+
+with csv_tab1:
+    csv_text = st.text_area(
+        "CSVデータを貼り付け",
+        height=150,
+        placeholder="楽天証券からコピーしたCSVデータを貼り付けてください",
+        key="csv_paste",
+    )
+    if st.button("取り込み", key="import_paste"):
+        if csv_text.strip():
+            parsed = parse_rakuten_csv(csv_text)
+            if parsed:
+                st.session_state.holdings.extend(parsed)
+                st.success(f"{len(parsed)}銘柄を取り込みました")
+                st.rerun()
+            else:
+                st.error("CSVを解析できませんでした。カラム名を確認してください。")
+
+with csv_tab2:
+    uploaded = st.file_uploader("CSVファイル", type=["csv", "txt"], key="csv_upload")
+    if uploaded is not None:
+        raw = uploaded.read()
+        csv_content = ""
+        for enc in ["cp932", "shift_jis", "utf-8-sig", "utf-8"]:
+            try:
+                csv_content = raw.decode(enc)
+                if "銘柄" in csv_content:
+                    break
+            except (UnicodeDecodeError, LookupError):
+                continue
+
+        if not csv_content:
+            csv_content = raw.decode("cp932", errors="replace")
+
+        if st.button("取り込み", key="import_file"):
+            parsed = parse_rakuten_csv(csv_content)
+            if parsed:
+                st.session_state.holdings.extend(parsed)
+                st.success(f"{len(parsed)}銘柄を取り込みました")
+                st.rerun()
+            else:
+                st.error("CSVを解析できませんでした。")
+
+# --- セクター手動修正 ---
+unclassified = [i for i, h in enumerate(st.session_state.holdings) if h.get("sector") in ("", "未分類")]
+if unclassified:
+    st.sidebar.divider()
+    st.sidebar.warning(f"セクター未確定の銘柄が{len(unclassified)}件あります（yfinance取得後に自動設定されます）")
+
+# --- メイン: ポートフォリオ表示 ---
+if not st.session_state.holdings:
+    st.info("サイドバーから銘柄を追加するか、楽天証券CSVを取り込んでください。")
+    st.stop()
+
+with st.spinner("株価・セクターデータを取得中..."):
+    df = build_portfolio_df(st.session_state.holdings)
+
+if df.empty:
+    st.error("データを取得できませんでした。")
+    st.stop()
+
+# ─── KPI ────────────────────────────────────────────────────────
+total_value = df["評価額"].sum()
+total_cost = df["取得総額"].sum()
+total_div_before = df["年間配当(税引前)"].sum()
+total_div_after = df["年間配当(税引後)"].sum()
+portfolio_yield = total_div_after / total_value if total_value else 0
+defensive_value = df.loc[df["景気区分"] == "ディフェンシブ", "評価額"].sum()
+defensive_ratio = defensive_value / total_value if total_value else 0
+
+has_jp = any(h["ticker"].endswith(".T") for h in st.session_state.holdings)
+cur = "¥" if has_jp else "$"
+
+k1, k2, k3, k4 = st.columns(4)
+k1.metric("総評価額", f"{cur}{total_value:,.0f}", f"{(total_value - total_cost) / total_cost:.1%}" if total_cost else "")
+k2.metric("年間配当(税引後)", f"{cur}{total_div_after:,.0f}")
+k3.metric("税引後利回り", f"{portfolio_yield:.2%}")
+k4.metric("ディフェンシブ比率", f"{defensive_ratio:.1%}")
+
+# 口座別 配当サマリー
+nisa_div_before = df.loc[df["口座"] == "NISA", "年間配当(税引前)"].sum()
+nisa_div_after = df.loc[df["口座"] == "NISA", "年間配当(税引後)"].sum()
+tokutei_div_before = df.loc[df["口座"] == "特定", "年間配当(税引前)"].sum()
+tokutei_div_after = df.loc[df["口座"] == "特定", "年間配当(税引後)"].sum()
+tax_amount = total_div_before - total_div_after
+
+s1, s2, s3 = st.columns(3)
+s1.metric("NISA配当(非課税)", f"{cur}{nisa_div_after:,.0f}")
+s2.metric("特定口座配当(税引後)", f"{cur}{tokutei_div_after:,.0f}",
+          f"税引前 {cur}{tokutei_div_before:,.0f}")
+s3.metric("年間税額", f"{cur}{tax_amount:,.0f}")
+
+st.divider()
+
+# ─── 買い増しアラート ───────────────────────────────────────────
+alerts = df[df["損益率"] <= DROP_ALERT_THRESHOLD]
+if not alerts.empty:
+    st.warning("20%以上下落 — 買い増し検討アラート")
+    for _, row in alerts.iterrows():
+        st.error(
+            f"**{row['会社名'] or row['銘柄']}** ({row['銘柄']}) : "
+            f"取得単価 {cur}{row['取得単価']:,.2f} → 現在 {cur}{row['現在株価']:,.2f}（{row['損益率']:.1%}）"
+        )
+    st.divider()
+
+# ─── ポートフォリオ一覧 ─────────────────────────────────────────
+st.subheader("保有銘柄一覧")
+
+display_df = df.drop(columns=["_div_months", "_annual_div_after_tax"], errors="ignore").copy()
+fmt = {
+    "取得単価": f"{cur}{{:,.2f}}",
+    "現在株価": f"{cur}{{:,.2f}}",
+    "評価額": f"{cur}{{:,.0f}}",
+    "取得総額": f"{cur}{{:,.0f}}",
+    "損益率": "{:.1%}",
+    "年間配当/株": f"{cur}{{:,.2f}}",
+    "年間配当(税引前)": f"{cur}{{:,.0f}}",
+    "年間配当(税引後)": f"{cur}{{:,.0f}}",
+    "配当利回り(時価)": "{:.2%}",
+    "取得価格利回り": "{:.2%}",
+    "配当割合": "{:.1%}",
+}
+st.dataframe(
+    display_df.style.format(fmt),
+    use_container_width=True,
+    hide_index=True,
+)
+
+# ─── 配当金単価 手動設定 ──────────────────────────────────────────
+with st.expander("配当金単価を手動設定（yfinanceデータが不正確な場合）"):
+    st.caption("IRBANKやYahoo Financeの予想配当金に合わせて修正できます。0のままにするとyfinanceの値を使用します。")
+    if "div_overrides" not in st.session_state:
+        st.session_state["div_overrides"] = {}
+
+    div_rows = []
+    for _, row in df.iterrows():
+        ticker = row["銘柄"]
+        override = st.session_state["div_overrides"].get(ticker, 0.0)
+        div_rows.append({
+            "銘柄": ticker,
+            "会社名": row["会社名"],
+            "yfinance値(円)": round(row["年間配当/株"], 2),
+            "手動設定(円)": float(override) if override else 0.0,
+        })
+
+    edited = st.data_editor(
+        pd.DataFrame(div_rows),
+        column_config={
+            "銘柄": st.column_config.TextColumn(disabled=True),
+            "会社名": st.column_config.TextColumn(disabled=True),
+            "yfinance値(円)": st.column_config.NumberColumn(disabled=True, format="%.2f"),
+            "手動設定(円)": st.column_config.NumberColumn(min_value=0.0, step=1.0, format="%.0f"),
+        },
+        use_container_width=True,
+        hide_index=True,
+        key="div_override_editor",
+    )
+
+    if st.button("配当金設定を反映", key="apply_div_overrides"):
+        new_overrides = {}
+        for _, row in edited.iterrows():
+            val = float(row["手動設定(円)"] or 0)
+            if val > 0:
+                new_overrides[row["銘柄"]] = val
+        st.session_state["div_overrides"] = new_overrides
+        st.success("設定を反映しました。画面を更新します。")
+        st.rerun()
+
+st.divider()
+
+# ─── 分析グラフ ─────────────────────────────────────────────────
+st.subheader("分析")
+tab1, tab2, tab3, tab4 = st.tabs(["セクター分散", "配当割合", "景気区分", "銘柄スクリーニング"])
+
+with tab1:
+    sector_agg = df.groupby("セクター")["評価額"].sum().reset_index()
+    sector_agg["割合"] = sector_agg["評価額"] / sector_agg["評価額"].sum()
+    sector_agg = sector_agg.sort_values("評価額", ascending=False)
+    fig_sector = px.pie(
+        sector_agg, names="セクター", values="評価額",
+        title="セクター別 評価額構成",
+        hole=0.4,
+        category_orders={"セクター": sector_agg["セクター"].tolist()},
+    )
+    fig_sector.update_traces(textinfo="label+percent", textposition="outside")
+    st.plotly_chart(fig_sector, use_container_width=True)
+
+    # セクター別の評価額テーブル
+    sector_table = sector_agg.copy()
+    sector_table = sector_table.sort_values("評価額", ascending=False)
+    sector_table["割合"] = sector_table["割合"].map("{:.1%}".format)
+    sector_table["評価額"] = sector_table["評価額"].map(f"{cur}{{:,.0f}}".format)
+    st.dataframe(sector_table, use_container_width=True, hide_index=True)
+
+with tab2:
+    # 配当割合（会社名+口座で表示）
+    div_df = df[df["年間配当(税引後)"] > 0].copy()
+    div_df = div_df.sort_values("年間配当(税引後)", ascending=False)
+    div_df["表示名"] = div_df.apply(
+        lambda r: f"{r['会社名'] or r['銘柄']}({r['口座']})", axis=1
+    )
+    fig_div = px.pie(
+        div_df, names="表示名", values="年間配当(税引後)",
+        title="銘柄別 年間配当割合（税引後）",
+        hole=0.4,
+        category_orders={"表示名": div_df["表示名"].tolist()},
+    )
+    fig_div.update_traces(textinfo="label+percent", textposition="outside")
+    st.plotly_chart(fig_div, use_container_width=True)
+
+    # 口座別 配当比較（棒グラフ）
+    acct_div = df.groupby("口座").agg(
+        税引前=("年間配当(税引前)", "sum"),
+        税引後=("年間配当(税引後)", "sum"),
+    ).reset_index()
+    fig_acct = px.bar(
+        acct_div.melt(id_vars="口座", var_name="区分", value_name="金額"),
+        x="口座", y="金額", color="区分", barmode="group",
+        title="口座別 年間配当（税引前 vs 税引後）",
+        text_auto=f"{cur},.0f",
+    )
+    fig_acct.update_layout(yaxis_title="")
+    st.plotly_chart(fig_acct, use_container_width=True)
+
+    # 配当利回り比較
+    yield_df = df[df["取得価格利回り"] > 0].copy()
+    yield_df["表示名"] = yield_df.apply(
+        lambda r: f"{r['会社名'] or r['銘柄']}({r['口座']})", axis=1
+    )
+    fig_yield = px.bar(
+        yield_df.sort_values("取得価格利回り", ascending=True),
+        x="取得価格利回り", y="表示名", orientation="h",
+        title="銘柄別 取得価格ベース配当利回り",
+        text_auto=".2%",
+    )
+    fig_yield.update_layout(xaxis_tickformat=".1%", yaxis_title="")
+    st.plotly_chart(fig_yield, use_container_width=True)
+
+    # 月別配当カレンダー
+    st.subheader("配当月カレンダー")
+    monthly_div = {m: 0.0 for m in range(1, 13)}
+    monthly_stocks: dict[int, list[str]] = {m: [] for m in range(1, 13)}
+    for _, row in df.iterrows():
+        months = row.get("_div_months", [])
+        after_tax = row.get("_annual_div_after_tax", 0)
+        name_label = row["会社名"] or row["銘柄"]
+        if months and after_tax > 0:
+            per_month = after_tax / len(months)
+            for m in months:
+                monthly_div[m] += per_month
+                monthly_stocks[m].append(name_label)
+
+    month_df = pd.DataFrame({
+        "月": [f"{m}月" for m in range(1, 13)],
+        "配当金(税引後)": [monthly_div[m] for m in range(1, 13)],
+        "銘柄": [", ".join(monthly_stocks[m]) if monthly_stocks[m] else "―" for m in range(1, 13)],
+    })
+    fig_cal = px.bar(
+        month_df, x="月", y="配当金(税引後)",
+        title="月別 受取配当金（税引後・概算）",
+        text_auto=",.0f",
+        hover_data={"銘柄": True},
+        color_discrete_sequence=["#3498db"],
+    )
+    fig_cal.update_layout(yaxis_title="円", xaxis_title="")
+    st.plotly_chart(fig_cal, use_container_width=True)
+
+    # 月別明細テーブル
+    cal_table = month_df[month_df["配当金(税引後)"] > 0].copy()
+    cal_table["配当金(税引後)"] = cal_table["配当金(税引後)"].map("¥{:,.0f}".format)
+    st.dataframe(cal_table, use_container_width=True, hide_index=True)
+
+with tab3:
+    eco_agg = df.groupby("景気区分")["評価額"].sum().reset_index()
+    # 「―」(未分類)を除外
+    eco_agg = eco_agg[eco_agg["景気区分"] != "―"]
+    colors = {"ディフェンシブ": "#2ecc71", "景気敏感": "#e74c3c"}
+    fig_eco = px.pie(
+        eco_agg, names="景気区分", values="評価額",
+        title="ディフェンシブ vs 景気敏感",
+        hole=0.4,
+        color="景気区分",
+        color_discrete_map=colors,
+    )
+    fig_eco.update_traces(textinfo="label+percent+value", textposition="outside")
+    st.plotly_chart(fig_eco, use_container_width=True)
+
+    fig_gauge = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=defensive_ratio * 100,
+        title={"text": "ディフェンシブ比率"},
+        number={"suffix": "%"},
+        gauge={
+            "axis": {"range": [0, 100]},
+            "bar": {"color": "#2ecc71"},
+            "steps": [
+                {"range": [0, 40], "color": "#fadbd8"},
+                {"range": [40, 60], "color": "#fdebd0"},
+                {"range": [60, 100], "color": "#d5f5e3"},
+            ],
+            "threshold": {"line": {"color": "black", "width": 2}, "thickness": 0.75, "value": 50},
+        },
+    ))
+    st.plotly_chart(fig_gauge, use_container_width=True)
+
+with tab4:
+    st.markdown("""
+    **新規投資候補 — IRBANKスクリーニング（過去10年間）**
+
+    Yahoo Finance配当利回りランキングから**3.5%以上**の銘柄を取得し、
+    **保有銘柄を除外**した上で8項目をスクリーニングします。
+
+    | # | 条件 |
+    |---|------|
+    | 1 | 売上が全体的に右肩上がり |
+    | 2 | EPSが全体的に右肩上がり |
+    | 3 | 営業利益率が10%以上（10年平均） |
+    | 4 | 自己資本比率が40%以上（直近） |
+    | 5 | 営業CFが赤字なし |
+    | 6 | 現金等が全体的に右肩上がり |
+    | 7 | 一株配当が無配・減配なく増配傾向 |
+    | 8 | 配当性向が50%以下（10年平均） |
+    """)
+
+    # 保有銘柄コード一覧（除外用）
+    held_codes = set(
+        h["ticker"].replace(".T", "")
+        for h in st.session_state.holdings
+        if h["ticker"].endswith(".T")
+    )
+    if held_codes:
+        st.caption(f"保有中の{len(held_codes)}銘柄は候補から除外されます")
+
+    max_screen = st.slider(
+        "スクリーニング対象数（配当利回り上位から）",
+        min_value=20, max_value=200, value=80, step=10,
+    )
+
+    if st.button("新規投資候補をスクリーニング", type="primary"):
+        # Step 1: Yahoo Finance から配当利回り3.5%以上の銘柄を取得
+        with st.spinner("Yahoo Finance から高配当銘柄リストを取得中..."):
+            candidates = fetch_high_dividend_candidates(min_yield=3.5)
+
+        if not candidates:
+            st.error("配当利回りランキングを取得できませんでした。")
+        else:
+            # 保有銘柄を除外
+            candidates = [(code, dy) for code, dy in candidates if code not in held_codes]
+            candidates = candidates[:max_screen]
+
+            st.info(f"対象: {len(candidates)}銘柄（保有銘柄除外済）")
+
+            # Step 2: IRBANKスクリーニング
+            progress = st.progress(0, text="IRBANKからデータ取得中...")
+            results = []
+            for i, (code, div_yield) in enumerate(candidates):
+                progress.progress(
+                    (i + 1) / len(candidates),
+                    text=f"IRBANKからデータ取得中... {code} ({i+1}/{len(candidates)})",
+                )
+                result = screen_stock(code)
+                if result:
+                    result["code"] = code
+                    result["dividend_yield"] = round(div_yield, 2)
+                    # Yahoo Finance Japanから日本語名を取得
+                    result["name"] = fetch_jp_name(code) or code
+                    results.append(result)
+                time.sleep(0.5)
+            progress.empty()
+
+            if not results:
+                st.warning("スクリーニング条件を満たす銘柄がありませんでした。")
+            else:
+                results.sort(key=lambda x: (-x["score"], -x["dividend_yield"]))
+                st.session_state["screen_results"] = results
+
+    # 結果表示
+    if "screen_results" in st.session_state:
+        results = st.session_state["screen_results"]
+        top10 = results[:10]
+
+        st.subheader(f"おすすめ上位{min(10, len(top10))}社（新規投資候補）")
+
+        criteria_names = [
+            "売上成長", "EPS成長", "営業利益率10%↑", "自己資本比率40%↑",
+            "営業CF黒字", "現金増加", "連続増配", "配当性向50%↓",
+        ]
+        summary_rows = []
+        for r in top10:
+            row = {
+                "銘柄コード": r["code"],
+                "会社名": r["name"],
+                "スコア": f"{r['score']}/8",
+                "配当利回り": f"{r.get('dividend_yield', 0):.2f}%",
+            }
+            for cn in criteria_names:
+                row[cn] = "○" if r["criteria"].get(cn) else "×"
+            d = r["details"]
+            row["営業利益率"] = f"{d.get('営業利益率(10年平均)') or d.get('営業利益率(3年平均)', 0)}%"
+            row["自己資本比率"] = f"{d.get('自己資本比率(直近)', 0)}%"
+            row["配当性向"] = f"{d.get('配当性向(10年平均)') or d.get('配当性向(3年平均)', 0)}%"
+            row["一株配当"] = f"{d.get('一株配当(直近)', 0):.1f}円"
+            summary_rows.append(row)
+
+        summary_df = pd.DataFrame(summary_rows)
+
+        def highlight_score(val):
+            if "8/8" in str(val) or "7/8" in str(val):
+                return "background-color: #d5f5e3"
+            if "6/8" in str(val):
+                return "background-color: #fdebd0"
+            return ""
+
+        def highlight_circle(val):
+            if val == "○":
+                return "color: #27ae60; font-weight: bold"
+            if val == "×":
+                return "color: #e74c3c"
+            return ""
+
+        styled = summary_df.style.map(
+            highlight_score, subset=["スコア"]
+        ).map(
+            highlight_circle, subset=criteria_names
+        )
+        st.dataframe(styled, use_container_width=True, hide_index=True)
+
+        # 各銘柄の詳細
+        for r in top10:
+            with st.expander(
+                f"{'★' * r['score']}{'☆' * (8 - r['score'])} "
+                f"{r['name']} ({r['code']}) — {r['score']}/8 — 利回り{r['dividend_yield']}%"
+            ):
+                d = r["details"]
+                c1, c2, c3, c4, c5 = st.columns(5)
+                c1.metric("配当利回り", f"{r.get('dividend_yield', 0):.2f}%")
+                c2.metric("営業利益率(10年平均)", f"{d.get('営業利益率(10年平均)') or d.get('営業利益率(3年平均)', 0)}%")
+                c3.metric("自己資本比率(直近)", f"{d.get('自己資本比率(直近)', 0)}%")
+                c4.metric("一株配当(直近)", f"{d.get('一株配当(直近)', 0):.1f}円")
+                c5.metric("配当性向(10年平均)", f"{d.get('配当性向(10年平均)') or d.get('配当性向(3年平均)', 0)}%")
+
+        # 全結果も表示（折りたたみ）
+        if len(results) > 10:
+            with st.expander(f"全{len(results)}銘柄の結果を表示"):
+                all_rows = []
+                for r in results:
+                    row = {
+                        "コード": r["code"],
+                        "会社名": r["name"],
+                        "スコア": r["score"],
+                        "配当利回り": f"{r['dividend_yield']}%",
+                    }
+                    for cn in criteria_names:
+                        row[cn] = "○" if r["criteria"].get(cn) else "×"
+                    all_rows.append(row)
+                st.dataframe(pd.DataFrame(all_rows), use_container_width=True, hide_index=True)

@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.pyo
+.streamlit/secrets.toml
+*.csv
+*.env
+start_portfolio.bat
