@@ -1484,11 +1484,27 @@ with tab1:
     )
     st.plotly_chart(fig_sector, use_container_width=True)
 
-    # セクター別の評価額テーブル
-    sector_table = sector_agg[["セクター", "評価額", "割合"]].copy()
-    sector_table["割合"] = sector_table["割合"].map("{:.1%}".format)
-    sector_table["評価額"] = sector_table["評価額"].map(f"{cur}{{:,.0f}}".format)
-    st.dataframe(sector_table, use_container_width=True, hide_index=True)
+    # 横棒グラフ：小さいセクターも確実に表示
+    bar_sector = sector_agg.sort_values("評価額", ascending=True)
+    fig_sector_bar = go.Figure(go.Bar(
+        x=bar_sector["割合"] * 100,
+        y=bar_sector["セクター"],
+        orientation="h",
+        marker_color="#4a90d9",
+        text=[f"{v:.1f}%" for v in bar_sector["割合"] * 100],
+        textposition="outside",
+        textfont=dict(size=11),
+        hovertemplate="<b>%{y}</b><br>割合: %{x:.1f}%<extra></extra>",
+    ))
+    fig_sector_bar.update_layout(
+        height=max(160, len(bar_sector) * 26 + 60),
+        xaxis=dict(ticksuffix="%", automargin=True, tickfont=dict(size=10)),
+        yaxis=dict(automargin=True, tickfont=dict(size=11)),
+        margin=dict(l=4, r=60, t=10, b=20),
+        plot_bgcolor="#fafafa",
+        showlegend=False,
+    )
+    st.plotly_chart(fig_sector_bar, use_container_width=True)
 
 with tab2:
     # 配当割合（会社名+口座で表示）
@@ -1528,17 +1544,27 @@ with tab2:
     )
     st.plotly_chart(fig_div, use_container_width=True)
 
-    # 内訳テーブル（全銘柄を一覧表示）
-    div_table = div_df[["表示名", "口座", "年間配当(税引後)", "割合"]].copy()
-    div_table.columns = ["会社名", "口座", f"年間配当(税引後)({cur})", "割合"]
-    st.dataframe(
-        div_table.style.format({
-            f"年間配当(税引後)({cur})": f"{cur}{{:,.0f}}",
-            "割合": "{:.1%}",
-        }),
-        use_container_width=True,
-        hide_index=True,
+    # 横棒グラフ：小さい銘柄も確実に表示
+    bar_div = div_df.sort_values("年間配当(税引後)", ascending=True)
+    fig_div_bar = go.Figure(go.Bar(
+        x=bar_div["割合"] * 100,
+        y=bar_div["表示名"],
+        orientation="h",
+        marker_color="#4a90d9",
+        text=[f"{v:.1f}%" for v in bar_div["割合"] * 100],
+        textposition="outside",
+        textfont=dict(size=11),
+        hovertemplate="<b>%{y}</b><br>割合: %{x:.1f}%<extra></extra>",
+    ))
+    fig_div_bar.update_layout(
+        height=max(160, len(bar_div) * 26 + 60),
+        xaxis=dict(ticksuffix="%", automargin=True, tickfont=dict(size=10)),
+        yaxis=dict(automargin=True, tickfont=dict(size=11)),
+        margin=dict(l=4, r=60, t=10, b=20),
+        plot_bgcolor="#fafafa",
+        showlegend=False,
     )
+    st.plotly_chart(fig_div_bar, use_container_width=True)
 
     # 口座別 配当比較（棒グラフ）
     acct_div = df.groupby("口座").agg(
