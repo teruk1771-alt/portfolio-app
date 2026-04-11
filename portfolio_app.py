@@ -1158,8 +1158,8 @@ with csv_tab1:
         if csv_text.strip():
             parsed = parse_rakuten_csv(csv_text)
             if parsed:
-                st.session_state.holdings.extend(parsed)
-                st.success(f"{len(parsed)}銘柄を取り込みました")
+                st.session_state.holdings = parsed
+                st.success(f"{len(parsed)}銘柄を取り込みました（既存データを更新）")
                 st.rerun()
             else:
                 st.error("CSVを解析できませんでした。カラム名を確認してください。")
@@ -1183,8 +1183,8 @@ with csv_tab2:
         if st.button("取り込み", key="import_file"):
             parsed = parse_rakuten_csv(csv_content)
             if parsed:
-                st.session_state.holdings.extend(parsed)
-                st.success(f"{len(parsed)}銘柄を取り込みました")
+                st.session_state.holdings = parsed
+                st.success(f"{len(parsed)}銘柄を取り込みました（既存データを更新）")
                 st.rerun()
             else:
                 st.error("CSVを解析できませんでした。")
