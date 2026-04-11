@@ -1133,8 +1133,15 @@ fmt = {
     "取得価格利回り": "{:.2%}",
     "配当割合": "{:.1%}",
 }
+def _color_gain(val):
+    if val > 0:
+        return "color: red"
+    elif val < 0:
+        return "color: green"
+    return ""
+
 st.dataframe(
-    display_df.style.format(fmt),
+    display_df.style.format(fmt).map(_color_gain, subset=["損益率"]),
     use_container_width=True,
     hide_index=True,
 )
