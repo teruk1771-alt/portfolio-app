@@ -1587,7 +1587,7 @@ with tab4:
             + "".join(f"<th style='{th_style}'>{c}</th>" for c in cols_order)
             + "</tr></thead><tbody>"
         )
-        nowrap_cols = {"会社名", "業種"}
+        nowrap_cols = {"会社名", "業種", "PER", "PBR"}
         for row in summary_rows:
             html_rows.append("<tr>")
             for c in cols_order:
