@@ -1290,6 +1290,26 @@ st.dataframe(
         .apply(_color_vs_ref, ref_col="取得総額", subset=["評価額"]),
     use_container_width=True,
     hide_index=True,
+    column_config={
+        "銘柄":           st.column_config.Column(label="コード",      width="small"),
+        "会社名":         st.column_config.Column(label="会社名",      width="medium"),
+        "口座":           st.column_config.Column(label="口座",        width="small"),
+        "セクター":       st.column_config.Column(label="セクター",    width="small"),
+        "景気区分":       st.column_config.Column(label="景気",        width="small"),
+        "株数":           st.column_config.Column(label="株数",        width="small"),
+        "取得単価":       st.column_config.Column(label="取得単価",    width="small"),
+        "現在株価":       st.column_config.Column(label="現在株価",    width="small"),
+        "評価額":         st.column_config.Column(label="評価額",      width="small"),
+        "取得総額":       st.column_config.Column(label="取得額",      width="small"),
+        "損益率":         st.column_config.Column(label="損益率",      width="small"),
+        "年間配当/株":    st.column_config.Column(label="配当/株",     width="small"),
+        "年間配当(税引前)": st.column_config.Column(label="配当(税前)", width="small"),
+        "年間配当(税引後)": st.column_config.Column(label="配当(税後)", width="small"),
+        "配当利回り(時価)": st.column_config.Column(label="利回り(時価)", width="small"),
+        "取得価格利回り": st.column_config.Column(label="利回り(取得)", width="small"),
+        "配当割合":       st.column_config.Column(label="配当割合",    width="small"),
+        "配当月":         st.column_config.Column(label="配当月",      width="small"),
+    },
 )
 
 # ─── 配当金単価 手動設定 ──────────────────────────────────────────
