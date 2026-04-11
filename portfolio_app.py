@@ -507,7 +507,7 @@ def fetch_company_details(code: str) -> dict:
     """yfinance + 株探 / みんかぶ / IRBANK から PER・PBR・業種名・事業概要を取得"""
     result = {
         "per": None, "pbr": None,
-        "industry_jp": "", "overview": "",
+        "industry_jp": "", "overview": "", "founded": "",
     }
     ticker = f"{code}.T"
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
@@ -519,6 +519,14 @@ def fetch_company_details(code: str) -> dict:
         pbr = info.get("priceToBook")
         result["per"] = round(float(per), 1) if per else None
         result["pbr"] = round(float(pbr), 1) if pbr else None
+        # 設立年フォールバック（yfinance に ipoDate 等がある場合）
+        ipo = info.get("ipoExpectedDate") or info.get("firstTradeDateEpochUtc")
+        if ipo and not result["founded"]:
+            try:
+                from datetime import datetime as _dt
+                result["founded"] = _dt.fromtimestamp(int(ipo)).strftime("%Y年%m月%d日")
+            except Exception:
+                pass
     except Exception:
         pass
 
@@ -543,6 +551,8 @@ def fetch_company_details(code: str) -> dict:
                         result["overview"] = text
                     elif label == "業種" and not result["industry_jp"]:
                         result["industry_jp"] = td.get_text(strip=True)
+                    elif label == "設立" and not result["founded"]:
+                        result["founded"] = text
             # 業種リンクからも取得を試みる
             if not result["industry_jp"]:
                 for a in soup.find_all("a", href=True):
@@ -1624,8 +1634,10 @@ with tab4:
                 pbr_val = cd.get("pbr")
                 industry_val = cd.get("industry_jp", "")
 
+                founded_val = cd.get("founded", "")
                 metrics = [
                     ("業種",             industry_val or "―"),
+                    ("設立",             founded_val or "―"),
                     ("配当利回り",        f"{r.get('dividend_yield', 0):.2f}%"),
                     ("PER",              f"{per_val:.1f}倍" if per_val else "―"),
                     ("PBR",              f"{pbr_val:.2f}倍" if pbr_val else "―"),
