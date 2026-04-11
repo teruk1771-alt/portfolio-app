@@ -504,12 +504,13 @@ def fetch_jp_name(ticker: str) -> str:
 
 @st.cache_data(ttl=86400, show_spinner=False)
 def fetch_company_details(code: str) -> dict:
-    """yfinance + Yahoo Finance Japan から PER・PBR・業種名・事業概要・強みを取得"""
+    """yfinance + 株探(Kabutan) から PER・PBR・業種名・事業概要・強みを取得"""
     result = {
         "per": None, "pbr": None,
         "industry_jp": "", "overview": "", "strengths": "",
     }
     ticker = f"{code}.T"
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 
     # yfinance から PER / PBR
     try:
@@ -518,62 +519,68 @@ def fetch_company_details(code: str) -> dict:
         pbr = info.get("priceToBook")
         result["per"] = round(float(per), 1) if per else None
         result["pbr"] = round(float(pbr), 1) if pbr else None
-        # 英語の事業概要（フォールバック用）
-        result["_summary_en"] = info.get("longBusinessSummary", "")
     except Exception:
         pass
 
-    # Yahoo Finance Japan の企業情報ページから業種名・事業内容を取得
+    # ① 株探（kabutan.jp）から日本語の業種・事業内容を取得
     try:
-        url = f"https://finance.yahoo.co.jp/quote/{code}.T/company"
-        resp = requests.get(
-            url, timeout=10,
-            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
-        )
+        url = f"https://kabutan.jp/stock/?code={code}"
+        resp = requests.get(url, timeout=10, headers=headers)
+        resp.encoding = "utf-8"
         if resp.status_code == 200:
             soup = BeautifulSoup(resp.text, "html.parser")
 
-            # dt/dd ペアから業種・事業内容を探す
-            dts = soup.find_all("dt")
-            for dt in dts:
-                label = dt.get_text(strip=True)
-                dd = dt.find_next_sibling("dd")
-                if not dd:
-                    continue
-                text = dd.get_text(strip=True)
-                if "業種" in label and not result["industry_jp"]:
-                    result["industry_jp"] = text
-                elif ("事業内容" in label or "概要" in label) and not result["overview"]:
-                    result["overview"] = text
+            # 業種: <a> リンクに業種名が入っている（例: 電気機器）
+            if not result["industry_jp"]:
+                for a in soup.find_all("a", href=True):
+                    if "/stock/meigara/?gyosyu=" in a["href"]:
+                        result["industry_jp"] = a.get_text(strip=True)
+                        break
 
-            # tableセル形式（th/td）でも試みる
-            if not result["industry_jp"] or not result["overview"]:
+            # 事業内容: id="company_description" のブロック、または概要テキスト
+            desc_block = soup.find(id="company_description")
+            if desc_block:
+                result["overview"] = desc_block.get_text(separator="", strip=True)
+            else:
+                # テーブル内 th="事業内容" の隣の td
                 for th in soup.find_all("th"):
-                    label = th.get_text(strip=True)
-                    td = th.find_next_sibling("td")
-                    if not td:
-                        continue
-                    text = td.get_text(strip=True)
-                    if "業種" in label and not result["industry_jp"]:
-                        result["industry_jp"] = text
-                    elif ("事業内容" in label or "概要" in label) and not result["overview"]:
-                        result["overview"] = text
+                    if "事業内容" in th.get_text():
+                        td = th.find_next_sibling("td")
+                        if td:
+                            result["overview"] = td.get_text(separator="", strip=True)
+                            break
 
-            # フォールバック: ページ内の長めの <p> タグ
+            # フォールバック: class に "description" を含むブロック
             if not result["overview"]:
-                for p in soup.find_all("p"):
-                    t = p.get_text(strip=True)
-                    if len(t) > 80:
-                        result["overview"] = t[:400]
+                for tag in soup.find_all(class_=lambda c: c and "description" in c.lower()):
+                    t = tag.get_text(strip=True)
+                    if len(t) > 50:
+                        result["overview"] = t[:500]
                         break
     except Exception:
         pass
 
-    # 概要が取れなかった場合は英語サマリーを使用
-    if not result["overview"] and result.get("_summary_en"):
-        result["overview"] = result["_summary_en"][:300] + "…（英語）"
+    # ② 株探で取れなかった場合は minkabu から試みる
+    if not result["overview"]:
+        try:
+            url2 = f"https://minkabu.jp/stock/{code}"
+            resp2 = requests.get(url2, timeout=10, headers=headers)
+            resp2.encoding = "utf-8"
+            if resp2.status_code == 200:
+                soup2 = BeautifulSoup(resp2.text, "html.parser")
+                # minkabu は「事業内容」ラベルの後の p タグに概要がある
+                for heading in soup2.find_all(["h2", "h3", "dt", "th"]):
+                    if "事業内容" in heading.get_text() or "会社概要" in heading.get_text():
+                        nxt = heading.find_next(["p", "dd", "td"])
+                        if nxt:
+                            t = nxt.get_text(strip=True)
+                            if len(t) > 30:
+                                result["overview"] = t[:500]
+                                break
+        except Exception:
+            pass
 
-    # 強み: 事業概要の前半部分（100文字）を要約として利用
+    # 強み: 概要の冒頭2文を要約として使用
     if result["overview"] and not result["strengths"]:
         sentences = result["overview"].replace("。", "。\n").split("\n")
         result["strengths"] = "。".join(
