@@ -504,7 +504,7 @@ def fetch_jp_name(ticker: str) -> str:
 
 @st.cache_data(ttl=86400, show_spinner=False)
 def fetch_company_details(code: str) -> dict:
-    """yfinance + 株探(Kabutan) から PER・PBR・業種名・事業概要・強みを取得"""
+    """yfinance + 株探 / みんかぶ / IRBANK から PER・PBR・業種名・事業概要を取得"""
     result = {
         "per": None, "pbr": None,
         "industry_jp": "", "overview": "", "strengths": "",
@@ -512,7 +512,7 @@ def fetch_company_details(code: str) -> dict:
     ticker = f"{code}.T"
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 
-    # yfinance から PER / PBR
+    # ── yfinance から PER / PBR ──────────────────────────────────
     try:
         info = yf.Ticker(ticker).info
         per = info.get("trailingPE")
@@ -522,65 +522,89 @@ def fetch_company_details(code: str) -> dict:
     except Exception:
         pass
 
-    # ① 株探（kabutan.jp）から日本語の業種・事業内容を取得
+    # ── ① 株探（kabutan.jp）：業種名・概要 ──────────────────────
     try:
-        url = f"https://kabutan.jp/stock/?code={code}"
-        resp = requests.get(url, timeout=10, headers=headers)
+        resp = requests.get(
+            f"https://kabutan.jp/stock/?code={code}",
+            timeout=10, headers=headers,
+        )
         resp.encoding = "utf-8"
         if resp.status_code == 200:
             soup = BeautifulSoup(resp.text, "html.parser")
-
-            # 業種: <a> リンクに業種名が入っている（例: 電気機器）
+            block = soup.find("div", class_="company_block")
+            if block:
+                for th in block.find_all("th"):
+                    label = th.get_text(strip=True)
+                    td = th.find_next_sibling("td")
+                    if not td:
+                        continue
+                    text = td.get_text(strip=True)
+                    if label == "概要" and not result["overview"]:
+                        result["overview"] = text
+                    elif label == "業種" and not result["industry_jp"]:
+                        result["industry_jp"] = td.get_text(strip=True)
+            # 業種リンクからも取得を試みる
             if not result["industry_jp"]:
                 for a in soup.find_all("a", href=True):
                     if "/stock/meigara/?gyosyu=" in a["href"]:
                         result["industry_jp"] = a.get_text(strip=True)
                         break
-
-            # 事業内容: id="company_description" のブロック、または概要テキスト
-            desc_block = soup.find(id="company_description")
-            if desc_block:
-                result["overview"] = desc_block.get_text(separator="", strip=True)
-            else:
-                # テーブル内 th="事業内容" の隣の td
-                for th in soup.find_all("th"):
-                    if "事業内容" in th.get_text():
-                        td = th.find_next_sibling("td")
-                        if td:
-                            result["overview"] = td.get_text(separator="", strip=True)
-                            break
-
-            # フォールバック: class に "description" を含むブロック
-            if not result["overview"]:
-                for tag in soup.find_all(class_=lambda c: c and "description" in c.lower()):
-                    t = tag.get_text(strip=True)
-                    if len(t) > 50:
-                        result["overview"] = t[:500]
-                        break
     except Exception:
         pass
 
-    # ② 株探で取れなかった場合は minkabu から試みる
+    # ── ② みんかぶ（minkabu.jp）：概要フォールバック ─────────────
     if not result["overview"]:
         try:
-            url2 = f"https://minkabu.jp/stock/{code}"
-            resp2 = requests.get(url2, timeout=10, headers=headers)
+            resp2 = requests.get(
+                f"https://minkabu.jp/stock/{code}",
+                timeout=10, headers=headers,
+            )
             resp2.encoding = "utf-8"
             if resp2.status_code == 200:
                 soup2 = BeautifulSoup(resp2.text, "html.parser")
-                # minkabu は「事業内容」ラベルの後の p タグに概要がある
-                for heading in soup2.find_all(["h2", "h3", "dt", "th"]):
-                    if "事業内容" in heading.get_text() or "会社概要" in heading.get_text():
-                        nxt = heading.find_next(["p", "dd", "td"])
-                        if nxt:
-                            t = nxt.get_text(strip=True)
-                            if len(t) > 30:
-                                result["overview"] = t[:500]
-                                break
+                body = soup2.find("div", id="sh_field_body")
+                if body:
+                    for div in body.select("div.ly_content_wrapper.size_ss"):
+                        t = div.get_text(strip=True)
+                        # リンクなし・一定の文字数があるものが概要
+                        if t and not div.find("a") and len(t) > 10:
+                            result["overview"] = t
+                            break
         except Exception:
             pass
 
-    # 強み: 概要の冒頭2文を要約として使用
+    # ── ③ IRBANK：概要フォールバック（EDINETコード経由） ──────────
+    if not result["overview"]:
+        try:
+            # irbank.net/{stock_code} ページ内の会社ページリンクからEDINETコードを取得
+            r0 = requests.get(
+                f"https://irbank.net/{code}",
+                timeout=10, headers=headers,
+            )
+            r0.encoding = "utf-8"
+            if r0.status_code == 200:
+                s0 = BeautifulSoup(r0.text, "html.parser")
+                edinet_link = None
+                for a in s0.find_all("a", href=True):
+                    href = a["href"]
+                    if re.match(r"^/E\d+$", href):
+                        edinet_link = href
+                        break
+                if edinet_link:
+                    r1 = requests.get(
+                        f"https://irbank.net{edinet_link}",
+                        timeout=10, headers=headers,
+                    )
+                    r1.encoding = "utf-8"
+                    if r1.status_code == 200:
+                        s1 = BeautifulSoup(r1.text, "html.parser")
+                        msg = s1.find("p", class_="message")
+                        if msg:
+                            result["overview"] = msg.get_text(strip=True)
+        except Exception:
+            pass
+
+    # ── 強み：概要の冒頭2文を要約として表示 ─────────────────────
     if result["overview"] and not result["strengths"]:
         sentences = result["overview"].replace("。", "。\n").split("\n")
         result["strengths"] = "。".join(
