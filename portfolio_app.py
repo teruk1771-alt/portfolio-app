@@ -1391,8 +1391,36 @@ with tab2:
         hole=0.4,
         category_orders={"表示名": div_df["表示名"].tolist()},
     )
-    fig_div.update_traces(textinfo="label+percent", textposition="outside")
+    fig_div.update_traces(
+        textinfo="percent",
+        textposition="inside",
+        insidetextorientation="auto",
+        hovertemplate="<b>%{label}</b><br>%{value:,.0f}円<br>%{percent}<extra></extra>",
+    )
+    fig_div.update_layout(
+        height=520,
+        legend=dict(
+            orientation="v",
+            x=1.01, y=0.5,
+            xanchor="left",
+            font=dict(size=11),
+        ),
+        margin=dict(l=10, r=10, t=40, b=10),
+    )
     st.plotly_chart(fig_div, use_container_width=True)
+
+    # 内訳テーブル（全銘柄を一覧表示）
+    div_table = div_df[["表示名", "年間配当(税引後)"]].copy()
+    div_table["割合"] = div_table["年間配当(税引後)"] / div_table["年間配当(税引後)"].sum()
+    div_table.columns = ["銘柄（口座）", f"年間配当(税引後)({cur})", "割合"]
+    st.dataframe(
+        div_table.style.format({
+            f"年間配当(税引後)({cur})": f"{cur}{{:,.0f}}",
+            "割合": "{:.1%}",
+        }),
+        use_container_width=True,
+        hide_index=True,
+    )
 
     # 口座別 配当比較（棒グラフ）
     acct_div = df.groupby("口座").agg(
