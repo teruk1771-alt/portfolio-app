@@ -1240,90 +1240,6 @@ s3.metric("年間税額", f"{cur}{tax_amount:,.0f}")
 
 st.divider()
 
-# ─── 買い増し検討チャート ────────────────────────────────────────
-with st.expander("📉 買い増し検討チャート（損益率 -20%ライン）", expanded=True):
-    gain_df = df.copy()
-    gain_df["表示名"] = gain_df.apply(
-        lambda r: f"{r['会社名'] or r['銘柄']}", axis=1
-    )
-    gain_df = gain_df.sort_values("損益率", ascending=True)
-
-    # 色分け: -20%以下=赤, -10〜-20%=橙, 0〜-10%=黄, 0以上=緑
-    def _bar_color(v):
-        if v <= -0.20:
-            return "#e74c3c"   # 赤：買い増し検討ゾーン
-        elif v <= -0.10:
-            return "#e67e22"   # 橙：警戒ゾーン
-        elif v < 0:
-            return "#f1c40f"   # 黄：要注意
-        else:
-            return "#2ecc71"   # 緑：含み益
-
-    gain_df["色"] = gain_df["損益率"].apply(_bar_color)
-    gain_df["損益率(%)"] = gain_df["損益率"] * 100
-
-    import plotly.graph_objects as go
-    fig_gain = go.Figure()
-
-    fig_gain.add_trace(go.Bar(
-        x=gain_df["損益率(%)"],
-        y=gain_df["表示名"],
-        orientation="h",
-        marker_color=gain_df["色"].tolist(),
-        text=[f"{v:.1f}%" for v in gain_df["損益率(%)"]],
-        textposition="outside",
-        hovertemplate=(
-            "<b>%{y}</b><br>"
-            "損益率: %{x:.1f}%<br>"
-            "<extra></extra>"
-        ),
-    ))
-
-    # -20%の警戒ライン
-    fig_gain.add_vline(
-        x=-20,
-        line_width=2, line_dash="dash", line_color="#e74c3c",
-        annotation_text="買い増し検討ライン -20%",
-        annotation_position="top",
-        annotation_font_color="#e74c3c",
-        annotation_font_size=12,
-    )
-    # 0%の基準ライン
-    fig_gain.add_vline(
-        x=0,
-        line_width=1, line_dash="dot", line_color="#888",
-    )
-
-    fig_gain.update_layout(
-        title="保有銘柄 損益率（取得価格比）",
-        height=max(200, len(gain_df) * 22 + 60),
-        xaxis=dict(
-            title="損益率(%)",
-            ticksuffix="%",
-            zeroline=False,
-        ),
-        yaxis=dict(title=""),
-        margin=dict(l=10, r=80, t=50, b=40),
-        showlegend=False,
-        plot_bgcolor="#fafafa",
-    )
-    st.plotly_chart(fig_gain, use_container_width=True)
-
-    # -20%以下の銘柄をアラート表示
-    alerts = df[df["損益率"] <= DROP_ALERT_THRESHOLD]
-    if not alerts.empty:
-        st.error(f"⚠️ 以下の{len(alerts)}銘柄が取得価格から20%以上下落しています")
-        for _, row in alerts.iterrows():
-            st.markdown(
-                f"🔴 **{row['会社名'] or row['銘柄']}** ({row['銘柄']})　"
-                f"取得単価 {cur}{row['取得単価']:,.2f} → 現在 {cur}{row['現在株価']:,.2f}　"
-                f"**損益率 {row['損益率']:.1%}**"
-            )
-    else:
-        st.success("✅ 20%以上下落している銘柄はありません")
-
-st.divider()
-
 # ─── ポートフォリオ一覧 ─────────────────────────────────────────
 st.subheader("保有銘柄一覧")
 
@@ -1424,6 +1340,90 @@ with st.expander("配当金単価を手動設定（yfinanceデータが不正確
         st.session_state["div_overrides"] = new_overrides
         st.success("設定を反映しました。画面を更新します。")
         st.rerun()
+
+st.divider()
+
+# ─── 買い増し検討チャート ────────────────────────────────────────
+with st.expander("📉 買い増し検討チャート（損益率 -20%ライン）", expanded=True):
+    gain_df = df.copy()
+    gain_df["表示名"] = gain_df.apply(
+        lambda r: f"{r['会社名'] or r['銘柄']}", axis=1
+    )
+    gain_df = gain_df.sort_values("損益率", ascending=True)
+
+    # 色分け: -20%以下=赤, -10〜-20%=橙, 0〜-10%=黄, 0以上=緑
+    def _bar_color(v):
+        if v <= -0.20:
+            return "#e74c3c"   # 赤：買い増し検討ゾーン
+        elif v <= -0.10:
+            return "#e67e22"   # 橙：警戒ゾーン
+        elif v < 0:
+            return "#f1c40f"   # 黄：要注意
+        else:
+            return "#2ecc71"   # 緑：含み益
+
+    gain_df["色"] = gain_df["損益率"].apply(_bar_color)
+    gain_df["損益率(%)"] = gain_df["損益率"] * 100
+
+    import plotly.graph_objects as go
+    fig_gain = go.Figure()
+
+    fig_gain.add_trace(go.Bar(
+        x=gain_df["損益率(%)"],
+        y=gain_df["表示名"],
+        orientation="h",
+        marker_color=gain_df["色"].tolist(),
+        text=[f"{v:.1f}%" for v in gain_df["損益率(%)"]],
+        textposition="outside",
+        hovertemplate=(
+            "<b>%{y}</b><br>"
+            "損益率: %{x:.1f}%<br>"
+            "<extra></extra>"
+        ),
+    ))
+
+    # -20%の警戒ライン
+    fig_gain.add_vline(
+        x=-20,
+        line_width=2, line_dash="dash", line_color="#e74c3c",
+        annotation_text="買い増し検討ライン -20%",
+        annotation_position="top",
+        annotation_font_color="#e74c3c",
+        annotation_font_size=12,
+    )
+    # 0%の基準ライン
+    fig_gain.add_vline(
+        x=0,
+        line_width=1, line_dash="dot", line_color="#888",
+    )
+
+    fig_gain.update_layout(
+        title="保有銘柄 損益率（取得価格比）",
+        height=max(200, len(gain_df) * 22 + 60),
+        xaxis=dict(
+            title="損益率(%)",
+            ticksuffix="%",
+            zeroline=False,
+        ),
+        yaxis=dict(title=""),
+        margin=dict(l=10, r=80, t=50, b=40),
+        showlegend=False,
+        plot_bgcolor="#fafafa",
+    )
+    st.plotly_chart(fig_gain, use_container_width=True)
+
+    # -20%以下の銘柄をアラート表示
+    alerts = df[df["損益率"] <= DROP_ALERT_THRESHOLD]
+    if not alerts.empty:
+        st.error(f"⚠️ 以下の{len(alerts)}銘柄が取得価格から20%以上下落しています")
+        for _, row in alerts.iterrows():
+            st.markdown(
+                f"🔴 **{row['会社名'] or row['銘柄']}** ({row['銘柄']})　"
+                f"取得単価 {cur}{row['取得単価']:,.2f} → 現在 {cur}{row['現在株価']:,.2f}　"
+                f"**損益率 {row['損益率']:.1%}**"
+            )
+    else:
+        st.success("✅ 20%以上下落している銘柄はありません")
 
 st.divider()
 
