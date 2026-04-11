@@ -1383,36 +1383,42 @@ with tab2:
     div_df = df[df["年間配当(税引後)"] > 0].copy()
     div_df = div_df.sort_values("年間配当(税引後)", ascending=False)
     div_df["表示名"] = div_df.apply(
-        lambda r: f"{r['会社名'] or r['銘柄']}({r['口座']})", axis=1
+        lambda r: f"{r['会社名'] or r['銘柄']}", axis=1
     )
-    fig_div = px.pie(
-        div_df, names="表示名", values="年間配当(税引後)",
+    div_total = div_df["年間配当(税引後)"].sum()
+    div_df["割合"] = div_df["年間配当(税引後)"] / div_total
+    div_df["ラベル"] = div_df.apply(
+        lambda r: f"{r['表示名']}<br>{r['割合']:.1%}", axis=1
+    )
+
+    # ツリーマップ：面積＝割合、会社名を直接表示
+    fig_div = px.treemap(
+        div_df,
+        path=["ラベル"],
+        values="年間配当(税引後)",
         title="銘柄別 年間配当割合（税引後）",
-        hole=0.4,
-        category_orders={"表示名": div_df["表示名"].tolist()},
+        color="年間配当(税引後)",
+        color_continuous_scale="Blues",
     )
     fig_div.update_traces(
-        textinfo="percent",
-        textposition="inside",
-        insidetextorientation="auto",
-        hovertemplate="<b>%{label}</b><br>%{value:,.0f}円<br>%{percent}<extra></extra>",
+        textinfo="label",
+        textfont=dict(size=13),
+        hovertemplate=(
+            "<b>%{label}</b><br>"
+            f"年間配当: {cur}%{{value:,.0f}}<br>"
+            "割合: %{percentRoot:.1%}<extra></extra>"
+        ),
     )
     fig_div.update_layout(
-        height=520,
-        legend=dict(
-            orientation="v",
-            x=1.01, y=0.5,
-            xanchor="left",
-            font=dict(size=11),
-        ),
+        height=480,
         margin=dict(l=10, r=10, t=40, b=10),
+        coloraxis_showscale=False,
     )
     st.plotly_chart(fig_div, use_container_width=True)
 
     # 内訳テーブル（全銘柄を一覧表示）
-    div_table = div_df[["表示名", "年間配当(税引後)"]].copy()
-    div_table["割合"] = div_table["年間配当(税引後)"] / div_table["年間配当(税引後)"].sum()
-    div_table.columns = ["銘柄（口座）", f"年間配当(税引後)({cur})", "割合"]
+    div_table = div_df[["表示名", "口座", "年間配当(税引後)", "割合"]].copy()
+    div_table.columns = ["会社名", "口座", f"年間配当(税引後)({cur})", "割合"]
     st.dataframe(
         div_table.style.format({
             f"年間配当(税引後)({cur})": f"{cur}{{:,.0f}}",
