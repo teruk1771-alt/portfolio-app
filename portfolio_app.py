@@ -506,7 +506,7 @@ def fetch_jp_name(ticker: str) -> str:
 def fetch_company_details(code: str) -> dict:
     """yfinance + 株探 / みんかぶ / IRBANK から PER・PBR・業種名・事業概要を取得"""
     result = {
-        "per": None, "pbr": None,
+        "per": None, "pbr": None, "roe": None, "roa": None,
         "industry_jp": "", "overview": "", "founded": "",
     }
     ticker = f"{code}.T"
@@ -519,6 +519,10 @@ def fetch_company_details(code: str) -> dict:
         pbr = info.get("priceToBook")
         result["per"] = round(float(per), 1) if per else None
         result["pbr"] = round(float(pbr), 1) if pbr else None
+        roe = info.get("returnOnEquity")
+        roa = info.get("returnOnAssets")
+        result["roe"] = round(float(roe) * 100, 1) if roe else None
+        result["roa"] = round(float(roa) * 100, 1) if roa else None
     except Exception:
         pass
 
@@ -1625,6 +1629,20 @@ with tab4:
 
         st.markdown("".join(html_rows), unsafe_allow_html=True)
 
+        # セクター別 ROE / ROA 平均を計算（top10 ベース）
+        _sec_roe: dict[str, list] = {}
+        _sec_roa: dict[str, list] = {}
+        for _cd in company_details.values():
+            _ind = _cd.get("industry_jp", "")
+            if not _ind:
+                continue
+            if _cd.get("roe") is not None:
+                _sec_roe.setdefault(_ind, []).append(_cd["roe"])
+            if _cd.get("roa") is not None:
+                _sec_roa.setdefault(_ind, []).append(_cd["roa"])
+        sec_roe_avg = {k: round(sum(v) / len(v), 1) for k, v in _sec_roe.items()}
+        sec_roa_avg = {k: round(sum(v) / len(v), 1) for k, v in _sec_roa.items()}
+
         # 各銘柄の詳細
         for r in top10:
             cd = company_details.get(r["code"], {})
@@ -1649,16 +1667,26 @@ with tab4:
                 industry_val = cd.get("industry_jp", "")
 
                 founded_val = cd.get("founded", "")
+                roe_val = cd.get("roe")
+                roa_val = cd.get("roa")
+                roe_avg = sec_roe_avg.get(industry_val)
+                roa_avg = sec_roa_avg.get(industry_val)
+
+                # (ラベル, 値, セクター平均サブテキスト)
                 metrics = [
-                    ("業種",             industry_val or "―"),
-                    ("設立",             founded_val or "―"),
-                    ("配当利回り",        f"{r.get('dividend_yield', 0):.2f}%"),
-                    ("PER",              f"{per_val:.1f}倍" if per_val else "―"),
-                    ("PBR",              f"{pbr_val:.2f}倍" if pbr_val else "―"),
-                    ("営業利益率\n(10年平均)", f"{d.get('営業利益率(10年平均)') or d.get('営業利益率(3年平均)', 0)}%"),
-                    ("自己資本比率\n(直近)",   f"{d.get('自己資本比率(直近)', 0)}%"),
-                    ("配当性向\n(10年平均)",   f"{d.get('配当性向(10年平均)') or d.get('配当性向(3年平均)', 0)}%"),
-                    ("一株配当\n(直近)",       f"{d.get('一株配当(直近)', 0):.1f}円"),
+                    ("業種",                  industry_val or "―",                          None),
+                    ("設立",                  founded_val or "―",                           None),
+                    ("配当利回り",             f"{r.get('dividend_yield', 0):.2f}%",          None),
+                    ("PER",                   f"{per_val:.1f}倍" if per_val else "―",        None),
+                    ("PBR",                   f"{pbr_val:.2f}倍" if pbr_val else "―",        None),
+                    ("ROE",                   f"{roe_val:.1f}%" if roe_val is not None else "―",
+                                              f"業種平均 {roe_avg:.1f}%" if roe_avg is not None else None),
+                    ("ROA",                   f"{roa_val:.1f}%" if roa_val is not None else "―",
+                                              f"業種平均 {roa_avg:.1f}%" if roa_avg is not None else None),
+                    ("営業利益率\n(10年平均)", f"{d.get('営業利益率(10年平均)') or d.get('営業利益率(3年平均)', 0)}%", None),
+                    ("自己資本比率\n(直近)",   f"{d.get('自己資本比率(直近)', 0)}%",           None),
+                    ("配当性向\n(10年平均)",   f"{d.get('配当性向(10年平均)') or d.get('配当性向(3年平均)', 0)}%", None),
+                    ("一株配当\n(直近)",       f"{d.get('一株配当(直近)', 0):.1f}円",          None),
                 ]
                 card_style = (
                     "display:inline-block;min-width:100px;padding:8px 12px;"
@@ -1667,12 +1695,15 @@ with tab4:
                 )
                 label_style = "font-size:0.75em;color:#555;white-space:pre-line;line-height:1.3;"
                 value_style = "font-size:1.05em;font-weight:bold;margin-top:4px;"
+                avg_style   = "font-size:0.72em;color:#888;margin-top:3px;"
                 cards_html = "<div style='display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;'>"
-                for label, value in metrics:
+                for label, value, avg_text in metrics:
+                    avg_html = f"<div style='{avg_style}'>{avg_text}</div>" if avg_text else ""
                     cards_html += (
                         f"<div style='{card_style}'>"
                         f"<div style='{label_style}'>{label}</div>"
                         f"<div style='{value_style}'>{value}</div>"
+                        f"{avg_html}"
                         f"</div>"
                     )
                 cards_html += "</div>"
