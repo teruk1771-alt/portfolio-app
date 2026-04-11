@@ -1362,18 +1362,36 @@ with tab1:
     sector_agg = df.groupby("セクター")["評価額"].sum().reset_index()
     sector_agg["割合"] = sector_agg["評価額"] / sector_agg["評価額"].sum()
     sector_agg = sector_agg.sort_values("評価額", ascending=False)
-    fig_sector = px.pie(
-        sector_agg, names="セクター", values="評価額",
-        title="セクター別 評価額構成",
-        hole=0.4,
-        category_orders={"セクター": sector_agg["セクター"].tolist()},
+    sector_agg["ラベル"] = sector_agg.apply(
+        lambda r: f"{r['セクター']}<br>{r['割合']:.1%}", axis=1
     )
-    fig_sector.update_traces(textinfo="label+percent", textposition="outside")
+
+    fig_sector = px.treemap(
+        sector_agg,
+        path=["ラベル"],
+        values="評価額",
+        title="セクター別 評価額構成",
+        color="評価額",
+        color_continuous_scale="Blues",
+    )
+    fig_sector.update_traces(
+        textinfo="label",
+        textfont=dict(size=13),
+        hovertemplate=(
+            "<b>%{label}</b><br>"
+            f"評価額: {cur}%{{value:,.0f}}<br>"
+            "割合: %{percentRoot:.1%}<extra></extra>"
+        ),
+    )
+    fig_sector.update_layout(
+        height=480,
+        margin=dict(l=10, r=10, t=40, b=10),
+        coloraxis_showscale=False,
+    )
     st.plotly_chart(fig_sector, use_container_width=True)
 
     # セクター別の評価額テーブル
-    sector_table = sector_agg.copy()
-    sector_table = sector_table.sort_values("評価額", ascending=False)
+    sector_table = sector_agg[["セクター", "評価額", "割合"]].copy()
     sector_table["割合"] = sector_table["割合"].map("{:.1%}".format)
     sector_table["評価額"] = sector_table["評価額"].map(f"{cur}{{:,.0f}}".format)
     st.dataframe(sector_table, use_container_width=True, hide_index=True)
