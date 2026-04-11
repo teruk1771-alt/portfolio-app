@@ -519,14 +519,30 @@ def fetch_company_details(code: str) -> dict:
         pbr = info.get("priceToBook")
         result["per"] = round(float(per), 1) if per else None
         result["pbr"] = round(float(pbr), 1) if pbr else None
-        # 設立年フォールバック（yfinance に ipoDate 等がある場合）
-        ipo = info.get("ipoExpectedDate") or info.get("firstTradeDateEpochUtc")
-        if ipo and not result["founded"]:
-            try:
-                from datetime import datetime as _dt
-                result["founded"] = _dt.fromtimestamp(int(ipo)).strftime("%Y年%m月%d日")
-            except Exception:
-                pass
+    except Exception:
+        pass
+
+    # ── Yahoo Finance Japan /profile から設立年月日・業種を取得 ──
+    try:
+        prof_resp = requests.get(
+            f"https://finance.yahoo.co.jp/quote/{code}.T/profile",
+            timeout=10, headers=headers,
+        )
+        prof_resp.encoding = "utf-8"
+        if prof_resp.status_code == 200:
+            prof_soup = BeautifulSoup(prof_resp.text, "html.parser")
+            # th のテキストで検索（クラス名は変動するため text で照合）
+            for th in prof_soup.find_all("th"):
+                label = th.get_text(strip=True)
+                td = th.find_next_sibling("td")
+                if not td:
+                    continue
+                p = td.find("p")
+                text = (p.get_text(strip=True) if p else td.get_text(strip=True))
+                if label == "設立年月日" and not result["founded"]:
+                    result["founded"] = text
+                elif label == "業種" and not result["industry_jp"]:
+                    result["industry_jp"] = text
     except Exception:
         pass
 
@@ -551,8 +567,6 @@ def fetch_company_details(code: str) -> dict:
                         result["overview"] = text
                     elif label == "業種" and not result["industry_jp"]:
                         result["industry_jp"] = td.get_text(strip=True)
-                    elif label == "設立" and not result["founded"]:
-                        result["founded"] = text
             # 業種リンクからも取得を試みる
             if not result["industry_jp"]:
                 for a in soup.find_all("a", href=True):
