@@ -1587,11 +1587,14 @@ with tab4:
             + "".join(f"<th style='{th_style}'>{c}</th>" for c in cols_order)
             + "</tr></thead><tbody>"
         )
+        nowrap_cols = {"会社名", "業種"}
         for row in summary_rows:
             html_rows.append("<tr>")
             for c in cols_order:
                 val = str(row.get(c, ""))
                 extra = _cell_style(c, val)
+                if c in nowrap_cols:
+                    extra += "white-space:nowrap;word-break:normal;"
                 html_rows.append(f"<td style='{td_base}{extra}'>{val}</td>")
             html_rows.append("</tr>")
         html_rows.append("</tbody></table>")
