@@ -507,7 +507,7 @@ def fetch_company_details(code: str) -> dict:
     """yfinance + 株探 / みんかぶ / IRBANK から PER・PBR・業種名・事業概要を取得"""
     result = {
         "per": None, "pbr": None,
-        "industry_jp": "", "overview": "", "strengths": "",
+        "industry_jp": "", "overview": "",
     }
     ticker = f"{code}.T"
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
@@ -603,13 +603,6 @@ def fetch_company_details(code: str) -> dict:
                             result["overview"] = msg.get_text(strip=True)
         except Exception:
             pass
-
-    # ── 強み：概要の冒頭2文を要約として表示 ─────────────────────
-    if result["overview"] and not result["strengths"]:
-        sentences = result["overview"].replace("。", "。\n").split("\n")
-        result["strengths"] = "。".join(
-            s.strip() for s in sentences[:2] if s.strip()
-        )
 
     return result
 
@@ -1587,14 +1580,10 @@ with tab4:
             ):
                 # 概要・強み
                 overview = cd.get("overview", "")
-                strengths = cd.get("strengths", "")
                 if overview:
                     st.markdown("**📋 概要（事業内容）**")
                     st.write(overview)
-                if strengths and strengths != overview:
-                    st.markdown("**💡 強み・特徴**")
-                    st.write(strengths)
-                elif not overview:
+                else:
                     st.caption("事業概要を取得できませんでした。")
 
                 st.divider()
