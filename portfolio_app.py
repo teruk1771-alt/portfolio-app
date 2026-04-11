@@ -1643,6 +1643,18 @@ with tab4:
         sec_roe_avg = {k: round(sum(v) / len(v), 1) for k, v in _sec_roe.items()}
         sec_roa_avg = {k: round(sum(v) / len(v), 1) for k, v in _sec_roa.items()}
 
+        # セクター��� 営業利益率 平均（IRBANK データから）
+        _sec_op: dict[str, list] = {}
+        for _r in top10:
+            _ind = company_details.get(_r["code"], {}).get("industry_jp", "")
+            if not _ind:
+                continue
+            _d = _r["details"]
+            _op = _d.get("営業利益率(10年平均)") or _d.get("営業利益率(3年平均)")
+            if _op is not None:
+                _sec_op.setdefault(_ind, []).append(float(_op))
+        sec_op_avg = {k: round(sum(v) / len(v), 1) for k, v in _sec_op.items()}
+
         # 各銘柄の詳細
         for r in top10:
             cd = company_details.get(r["code"], {})
@@ -1683,7 +1695,8 @@ with tab4:
                                               f"業種平均 {roe_avg:.1f}%" if roe_avg is not None else None),
                     ("ROA",                   f"{roa_val:.1f}%" if roa_val is not None else "―",
                                               f"業種平均 {roa_avg:.1f}%" if roa_avg is not None else None),
-                    ("営業利益率\n(10年平均)", f"{d.get('営業利益率(10年平均)') or d.get('営業利益率(3年平均)', 0)}%", None),
+                    ("営業利益率\n(10年平均)", f"{d.get('営業利益率(10年平均)') or d.get('営業利益率(3年平均)', 0)}%",
+                                              f"業種平均 {sec_op_avg[industry_val]:.1f}%" if industry_val in sec_op_avg else None),
                     ("自己資本比率\n(直近)",   f"{d.get('自己資本比率(直近)', 0)}%",           None),
                     ("配当性向\n(10年平均)",   f"{d.get('配当性向(10年平均)') or d.get('配当性向(3年平均)', 0)}%", None),
                     ("一株配当\n(直近)",       f"{d.get('一株配当(直近)', 0):.1f}円",          None),
