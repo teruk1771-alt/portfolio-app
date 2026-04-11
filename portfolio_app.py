@@ -1140,8 +1140,19 @@ def _color_gain(val):
         return "color: green"
     return ""
 
+def _color_vs_ref(col, ref_col):
+    ref = display_df[ref_col]
+    return [
+        "color: red" if v > r else "color: green" if v < r else ""
+        for v, r in zip(col, ref)
+    ]
+
 st.dataframe(
-    display_df.style.format(fmt).map(_color_gain, subset=["損益率"]),
+    display_df.style
+        .format(fmt)
+        .map(_color_gain, subset=["損益率"])
+        .apply(_color_vs_ref, ref_col="取得単価", subset=["現在株価"])
+        .apply(_color_vs_ref, ref_col="取得総額", subset=["評価額"]),
     use_container_width=True,
     hide_index=True,
 )
