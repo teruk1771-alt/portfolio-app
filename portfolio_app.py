@@ -1582,6 +1582,33 @@ with tab4:
             "PER", "PBR",
         ] + criteria_names + ["営業利益率", "自己資本比率", "配当性向", "一株配当"]
 
+        # 表示ヘッダー名（短縮）
+        col_labels = {
+            "銘柄コード":     "コード",
+            "配当利回り":     "利回り",
+            "売上成長":       "売上↑",
+            "EPS成長":        "EPS↑",
+            "営業利益率10%↑": "営利\n10%↑",
+            "自己資本比率40%↑":"自己資\n40%↑",
+            "営業CF黒字":     "CF\n黒字",
+            "現金増加":       "現金↑",
+            "連続増配":       "増配",
+            "配当性向50%↓":  "性向\n50%↓",
+            "営業利益率":     "営利率",
+            "自己資本比率":   "自己資本",
+            "一株配当":       "配当/株",
+        }
+
+        # 列幅（px）。指定なしは auto
+        col_widths = {
+            "銘柄コード": "52", "スコア": "48", "配当利回り": "52",
+            "PER": "52", "PBR": "52",
+            "売上成長": "42", "EPS成長": "42", "営業利益率10%↑": "48",
+            "自己資本比率40%↑": "52", "営業CF黒字": "42", "現金増加": "42",
+            "連続増配": "38", "配当性向50%↓": "48",
+            "営業利益率": "52", "自己資本比率": "56", "配当性向": "52", "一株配当": "52",
+        }
+
         def _score_bg(val):
             if "8/8" in val or "7/8" in val:
                 return "background:#d5f5e3;"
@@ -1599,20 +1626,27 @@ with tab4:
                     return "color:#e74c3c;"
             return ""
 
-        th_style = (
-            "background:#f0f2f6;padding:6px 8px;text-align:center;"
-            "border:1px solid #ddd;white-space:nowrap;font-size:0.82em;"
+        th_base = (
+            "background:#f0f2f6;padding:4px 5px;text-align:center;"
+            "border:1px solid #ddd;white-space:pre-line;font-size:0.78em;line-height:1.3;"
         )
         td_base = (
-            "padding:5px 8px;border:1px solid #ddd;"
-            "white-space:normal;word-break:break-all;font-size:0.82em;vertical-align:top;"
+            "padding:4px 5px;border:1px solid #ddd;"
+            "white-space:normal;word-break:break-all;font-size:0.80em;"
+            "vertical-align:middle;text-align:center;"
         )
+
+        def _th(col):
+            label = col_labels.get(col, col)
+            w = col_widths.get(col, "")
+            w_style = f"width:{w}px;min-width:{w}px;" if w else ""
+            return f"<th style='{th_base}{w_style}'>{label}</th>"
 
         html_rows = []
         html_rows.append(
-            "<table style='width:100%;border-collapse:collapse;'>"
+            "<table style='border-collapse:collapse;font-size:0.80em;'>"
             "<thead><tr>"
-            + "".join(f"<th style='{th_style}'>{c}</th>" for c in cols_order)
+            + "".join(_th(c) for c in cols_order)
             + "</tr></thead><tbody>"
         )
         nowrap_cols = {"会社名", "業種", "PER", "PBR"}
