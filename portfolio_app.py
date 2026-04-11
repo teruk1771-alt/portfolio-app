@@ -1548,28 +1548,55 @@ with tab4:
             row["一株配当"] = f"{d.get('一株配当(直近)', 0):.1f}円"
             summary_rows.append(row)
 
-        summary_df = pd.DataFrame(summary_rows)
+        # HTML テーブルで表示（テキスト折り返し対応）
+        cols_order = [
+            "銘柄コード", "会社名", "業種", "スコア", "配当利回り",
+            "PER", "PBR",
+        ] + criteria_names + ["営業利益率", "自己資本比率", "配当性向", "一株配当"]
 
-        def highlight_score(val):
-            if "8/8" in str(val) or "7/8" in str(val):
-                return "background-color: #d5f5e3"
-            if "6/8" in str(val):
-                return "background-color: #fdebd0"
+        def _score_bg(val):
+            if "8/8" in val or "7/8" in val:
+                return "background:#d5f5e3;"
+            if "6/8" in val:
+                return "background:#fdebd0;"
             return ""
 
-        def highlight_circle(val):
-            if val == "○":
-                return "color: #27ae60; font-weight: bold"
-            if val == "×":
-                return "color: #e74c3c"
+        def _cell_style(col, val):
+            if col == "スコア":
+                return _score_bg(val)
+            if col in criteria_names:
+                if val == "○":
+                    return "color:#27ae60;font-weight:bold;"
+                if val == "×":
+                    return "color:#e74c3c;"
             return ""
 
-        styled = summary_df.style.map(
-            highlight_score, subset=["スコア"]
-        ).map(
-            highlight_circle, subset=criteria_names
+        th_style = (
+            "background:#f0f2f6;padding:6px 8px;text-align:center;"
+            "border:1px solid #ddd;white-space:nowrap;font-size:0.82em;"
         )
-        st.dataframe(styled, use_container_width=True, hide_index=True)
+        td_base = (
+            "padding:5px 8px;border:1px solid #ddd;"
+            "white-space:normal;word-break:break-all;font-size:0.82em;vertical-align:top;"
+        )
+
+        html_rows = []
+        html_rows.append(
+            "<table style='width:100%;border-collapse:collapse;'>"
+            "<thead><tr>"
+            + "".join(f"<th style='{th_style}'>{c}</th>" for c in cols_order)
+            + "</tr></thead><tbody>"
+        )
+        for row in summary_rows:
+            html_rows.append("<tr>")
+            for c in cols_order:
+                val = str(row.get(c, ""))
+                extra = _cell_style(c, val)
+                html_rows.append(f"<td style='{td_base}{extra}'>{val}</td>")
+            html_rows.append("</tr>")
+        html_rows.append("</tbody></table>")
+
+        st.markdown("".join(html_rows), unsafe_allow_html=True)
 
         # 各銘柄の詳細
         for r in top10:
