@@ -500,6 +500,89 @@ def fetch_jp_name(ticker: str) -> str:
     return ""
 
 
+# ─── 企業詳細情報取得（PER/PBR/業種/概要） ────────────────────────
+
+@st.cache_data(ttl=86400, show_spinner=False)
+def fetch_company_details(code: str) -> dict:
+    """yfinance + Yahoo Finance Japan から PER・PBR・業種名・事業概要・強みを取得"""
+    result = {
+        "per": None, "pbr": None,
+        "industry_jp": "", "overview": "", "strengths": "",
+    }
+    ticker = f"{code}.T"
+
+    # yfinance から PER / PBR
+    try:
+        info = yf.Ticker(ticker).info
+        per = info.get("trailingPE")
+        pbr = info.get("priceToBook")
+        result["per"] = round(float(per), 1) if per else None
+        result["pbr"] = round(float(pbr), 1) if pbr else None
+        # 英語の事業概要（フォールバック用）
+        result["_summary_en"] = info.get("longBusinessSummary", "")
+    except Exception:
+        pass
+
+    # Yahoo Finance Japan の企業情報ページから業種名・事業内容を取得
+    try:
+        url = f"https://finance.yahoo.co.jp/quote/{code}.T/company"
+        resp = requests.get(
+            url, timeout=10,
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
+        )
+        if resp.status_code == 200:
+            soup = BeautifulSoup(resp.text, "html.parser")
+
+            # dt/dd ペアから業種・事業内容を探す
+            dts = soup.find_all("dt")
+            for dt in dts:
+                label = dt.get_text(strip=True)
+                dd = dt.find_next_sibling("dd")
+                if not dd:
+                    continue
+                text = dd.get_text(strip=True)
+                if "業種" in label and not result["industry_jp"]:
+                    result["industry_jp"] = text
+                elif ("事業内容" in label or "概要" in label) and not result["overview"]:
+                    result["overview"] = text
+
+            # tableセル形式（th/td）でも試みる
+            if not result["industry_jp"] or not result["overview"]:
+                for th in soup.find_all("th"):
+                    label = th.get_text(strip=True)
+                    td = th.find_next_sibling("td")
+                    if not td:
+                        continue
+                    text = td.get_text(strip=True)
+                    if "業種" in label and not result["industry_jp"]:
+                        result["industry_jp"] = text
+                    elif ("事業内容" in label or "概要" in label) and not result["overview"]:
+                        result["overview"] = text
+
+            # フォールバック: ページ内の長めの <p> タグ
+            if not result["overview"]:
+                for p in soup.find_all("p"):
+                    t = p.get_text(strip=True)
+                    if len(t) > 80:
+                        result["overview"] = t[:400]
+                        break
+    except Exception:
+        pass
+
+    # 概要が取れなかった場合は英語サマリーを使用
+    if not result["overview"] and result.get("_summary_en"):
+        result["overview"] = result["_summary_en"][:300] + "…（英語）"
+
+    # 強み: 事業概要の前半部分（100文字）を要約として利用
+    if result["overview"] and not result["strengths"]:
+        sentences = result["overview"].replace("。", "。\n").split("\n")
+        result["strengths"] = "。".join(
+            s.strip() for s in sentences[:2] if s.strip()
+        )
+
+    return result
+
+
 # ─── 配当支払い月取得 ────────────────────────────────────────────
 
 @st.cache_data(ttl=86400)
@@ -1412,17 +1495,25 @@ with tab4:
 
         st.subheader(f"おすすめ上位{min(10, len(top10))}社（新規投資候補）")
 
+        # 企業詳細情報を一括取得（キャッシュ済みなので高速）
+        with st.spinner("企業情報（業種・PER・PBR・概要）を取得中..."):
+            company_details = {r["code"]: fetch_company_details(r["code"]) for r in top10}
+
         criteria_names = [
             "売上成長", "EPS成長", "営業利益率10%↑", "自己資本比率40%↑",
             "営業CF黒字", "現金増加", "連続増配", "配当性向50%↓",
         ]
         summary_rows = []
         for r in top10:
+            cd = company_details.get(r["code"], {})
             row = {
                 "銘柄コード": r["code"],
                 "会社名": r["name"],
+                "業種": cd.get("industry_jp", "―"),
                 "スコア": f"{r['score']}/8",
                 "配当利回り": f"{r.get('dividend_yield', 0):.2f}%",
+                "PER": f"{cd['per']:.1f}倍" if cd.get("per") else "―",
+                "PBR": f"{cd['pbr']:.2f}倍" if cd.get("pbr") else "―",
             }
             for cn in criteria_names:
                 row[cn] = "○" if r["criteria"].get(cn) else "×"
@@ -1458,17 +1549,39 @@ with tab4:
 
         # 各銘柄の詳細
         for r in top10:
+            cd = company_details.get(r["code"], {})
             with st.expander(
                 f"{'★' * r['score']}{'☆' * (8 - r['score'])} "
                 f"{r['name']} ({r['code']}) — {r['score']}/8 — 利回り{r['dividend_yield']}%"
             ):
+                # 概要・強み
+                overview = cd.get("overview", "")
+                strengths = cd.get("strengths", "")
+                if overview:
+                    st.markdown("**📋 概要（事業内容）**")
+                    st.write(overview)
+                if strengths and strengths != overview:
+                    st.markdown("**💡 強み・特徴**")
+                    st.write(strengths)
+                elif not overview:
+                    st.caption("事業概要を取得できませんでした。")
+
+                st.divider()
+
+                # 財務指標
                 d = r["details"]
-                c1, c2, c3, c4, c5 = st.columns(5)
+                per_val = cd.get("per")
+                pbr_val = cd.get("pbr")
+                industry_val = cd.get("industry_jp", "")
+
+                c0, c1, c2, c3, c4, c5, c6 = st.columns(7)
+                c0.metric("業種", industry_val or "―")
                 c1.metric("配当利回り", f"{r.get('dividend_yield', 0):.2f}%")
-                c2.metric("営業利益率(10年平均)", f"{d.get('営業利益率(10年平均)') or d.get('営業利益率(3年平均)', 0)}%")
-                c3.metric("自己資本比率(直近)", f"{d.get('自己資本比率(直近)', 0)}%")
-                c4.metric("一株配当(直近)", f"{d.get('一株配当(直近)', 0):.1f}円")
-                c5.metric("配当性向(10年平均)", f"{d.get('配当性向(10年平均)') or d.get('配当性向(3年平均)', 0)}%")
+                c2.metric("PER", f"{per_val:.1f}倍" if per_val else "―")
+                c3.metric("PBR", f"{pbr_val:.2f}倍" if pbr_val else "―")
+                c4.metric("営業利益率(10年平均)", f"{d.get('営業利益率(10年平均)') or d.get('営業利益率(3年平均)', 0)}%")
+                c5.metric("自己資本比率(直近)", f"{d.get('自己資本比率(直近)', 0)}%")
+                c6.metric("配当性向(10年平均)", f"{d.get('配当性向(10年平均)') or d.get('配当性向(3年平均)', 0)}%")
 
         # 全結果も表示（折りたたみ）
         if len(results) > 10:
