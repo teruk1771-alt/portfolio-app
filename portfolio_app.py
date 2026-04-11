@@ -1618,20 +1618,39 @@ with tab4:
 
                 st.divider()
 
-                # 財務指標
+                # 財務指標（HTMLグリッドで全文表示）
                 d = r["details"]
                 per_val = cd.get("per")
                 pbr_val = cd.get("pbr")
                 industry_val = cd.get("industry_jp", "")
 
-                c0, c1, c2, c3, c4, c5, c6 = st.columns(7)
-                c0.metric("業種", industry_val or "―")
-                c1.metric("配当利回り", f"{r.get('dividend_yield', 0):.2f}%")
-                c2.metric("PER", f"{per_val:.1f}倍" if per_val else "―")
-                c3.metric("PBR", f"{pbr_val:.2f}倍" if pbr_val else "―")
-                c4.metric("営業利益率(10年平均)", f"{d.get('営業利益率(10年平均)') or d.get('営業利益率(3年平均)', 0)}%")
-                c5.metric("自己資本比率(直近)", f"{d.get('自己資本比率(直近)', 0)}%")
-                c6.metric("配当性向(10年平均)", f"{d.get('配当性向(10年平均)') or d.get('配当性向(3年平均)', 0)}%")
+                metrics = [
+                    ("業種",             industry_val or "―"),
+                    ("配当利回り",        f"{r.get('dividend_yield', 0):.2f}%"),
+                    ("PER",              f"{per_val:.1f}倍" if per_val else "―"),
+                    ("PBR",              f"{pbr_val:.2f}倍" if pbr_val else "―"),
+                    ("営業利益率\n(10年平均)", f"{d.get('営業利益率(10年平均)') or d.get('営業利益率(3年平均)', 0)}%"),
+                    ("自己資本比率\n(直近)",   f"{d.get('自己資本比率(直近)', 0)}%"),
+                    ("配当性向\n(10年平均)",   f"{d.get('配当性向(10年平均)') or d.get('配当性向(3年平均)', 0)}%"),
+                    ("一株配当\n(直近)",       f"{d.get('一株配当(直近)', 0):.1f}円"),
+                ]
+                card_style = (
+                    "display:inline-block;min-width:100px;padding:8px 12px;"
+                    "background:#f8f9fa;border:1px solid #e0e0e0;border-radius:6px;"
+                    "margin:4px;vertical-align:top;text-align:center;"
+                )
+                label_style = "font-size:0.75em;color:#555;white-space:pre-line;line-height:1.3;"
+                value_style = "font-size:1.05em;font-weight:bold;margin-top:4px;"
+                cards_html = "<div style='display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;'>"
+                for label, value in metrics:
+                    cards_html += (
+                        f"<div style='{card_style}'>"
+                        f"<div style='{label_style}'>{label}</div>"
+                        f"<div style='{value_style}'>{value}</div>"
+                        f"</div>"
+                    )
+                cards_html += "</div>"
+                st.markdown(cards_html, unsafe_allow_html=True)
 
         # 全結果も表示（折りたたみ）
         if len(results) > 10:
