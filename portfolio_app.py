@@ -1496,6 +1496,7 @@ cur = "¥" if has_jp else "$"
 
 k1, k2, k3, k4 = st.columns(4)
 k1.metric("総評価額", f"{cur}{total_value:,.0f}", f"{(total_value - total_cost) / total_cost:.1%}" if total_cost else "")
+k1.caption(f"取得総額 {cur}{total_cost:,.0f}")
 k2.metric("年間配当(税引後)", f"{cur}{total_div_after:,.0f}")
 k3.metric("税引後利回り", f"{portfolio_yield:.2%}")
 k4.metric("ディフェンシブ比率", f"{defensive_ratio:.1%}")
