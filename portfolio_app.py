@@ -1297,7 +1297,7 @@ def build_portfolio_df(holdings: list[dict]) -> pd.DataFrame:
 
 st.set_page_config(page_title="高配当株ポートフォリオ管理", layout="wide")
 
-# ─── 認証 ──────────────────────────────────────────────────────
+# ─── 認証 (streamlit-authenticator 0.2.x) ──────────────────────
 _creds = dict(st.secrets.get("credentials", {}))
 _cookie = dict(st.secrets.get("cookie", {
     "name": "portfolio_auth",
@@ -1311,19 +1311,18 @@ authenticator = stauth.Authenticate(
     _cookie.get("key", "change_this_secret_key"),
     int(_cookie.get("expiry_days", 30)),
 )
-authenticator.login(location="main", fields={
-    "Form name": "🔐 ログイン",
-    "Username": "ユーザー名",
-    "Password": "パスワード",
-    "Login": "ログイン",
-})
+name, authentication_status, username = authenticator.login("🔐 ログイン", "main")
 
-if st.session_state.get("authentication_status") is False:
+if authentication_status is False:
     st.error("ユーザー名またはパスワードが違います")
     st.stop()
-elif not st.session_state.get("authentication_status"):
+elif authentication_status is None:
     st.info("ユーザー名とパスワードを入力してください")
     st.stop()
+
+# セッションに保存（ユーザー切替検出に使用）
+st.session_state["username"] = username
+st.session_state["name"] = name
 
 # ログイン済み
 st.title("高配当株ポートフォリオ管理ツール")
@@ -1357,8 +1356,8 @@ else:
 st.sidebar.divider()
 
 # ログアウト
-st.sidebar.write(f"👤 {st.session_state.get('name', '')} でログイン中")
-authenticator.logout(button_name="ログアウト", location="sidebar")
+st.sidebar.write(f"👤 {name} でログイン中")
+authenticator.logout("ログアウト", "sidebar")
 st.sidebar.divider()
 
 with st.sidebar.form("add_stock", clear_on_submit=True):
