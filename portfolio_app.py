@@ -477,6 +477,49 @@ def get_economy_type(sector: str) -> str:
     return "―"
 
 
+# ─── 日本株 業種取得 ──────────────────────────────────────────
+
+# Yahoo Finance Japan の業種名 → 東証業種分類マッピング
+YJ_INDUSTRY_TO_SECTOR = {
+    "水産・農林業": "水産・農林業", "鉱業": "鉱業",
+    "建設業": "建設業", "食料品": "食料品", "繊維製品": "繊維製品",
+    "パルプ・紙": "パルプ・紙", "化学": "化学", "医薬品": "医薬品",
+    "石油・石炭製品": "石油・石炭", "ゴム製品": "ゴム製品",
+    "ガラス・土石製品": "ガラス・土石", "鉄鋼": "鉄鋼",
+    "非鉄金属": "非鉄金属", "金属製品": "金属製品", "機械": "機械",
+    "電気機器": "電気機器", "輸送用機器": "輸送用機器",
+    "精密機器": "精密機器", "その他製品": "その他製品",
+    "電気・ガス業": "電気・ガス", "陸運業": "陸運",
+    "海運業": "海運", "空運業": "空運",
+    "倉庫・運輸関連業": "倉庫・運輸", "情報・通信業": "情報・通信",
+    "卸売業": "卸売業", "小売業": "小売業",
+    "銀行業": "銀行", "証券、商品先物取引業": "証券・先物",
+    "保険業": "保険", "その他金融業": "その他金融",
+    "不動産業": "不動産", "サービス業": "サービス業",
+}
+
+@st.cache_data(ttl=86400, show_spinner=False)
+def fetch_sector_jp(stock_code: str) -> str:
+    """Yahoo Finance Japan のプロフィールページから業種を取得"""
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    try:
+        url = f"https://finance.yahoo.co.jp/quote/{stock_code}.T/profile"
+        r = requests.get(url, headers=headers, timeout=10)
+        r.encoding = "utf-8"
+        if r.status_code == 200:
+            soup = BeautifulSoup(r.text, "html.parser")
+            for th in soup.find_all("th"):
+                if "業種" in th.get_text(strip=True):
+                    td = th.find_next_sibling("td")
+                    if td:
+                        industry_raw = td.get_text(strip=True)
+                        # マッピングで東証業種に変換、なければそのまま返す
+                        return YJ_INDUSTRY_TO_SECTOR.get(industry_raw, industry_raw)
+    except Exception:
+        pass
+    return ""
+
+
 # ─── 日本語銘柄名取得 ─────────────────────────────────────────
 
 @st.cache_data(ttl=86400)
@@ -1124,11 +1167,17 @@ def build_portfolio_df(holdings: list[dict]) -> pd.DataFrame:
                 split_ratio = csv_price / yf_price
                 annual_div = annual_div * split_ratio
 
-        # セクター
+        # セクター: 保存値 → yfinance → Yahoo Finance Japan プロフィール
         sector = h.get("sector", "")
         if not sector or sector == "未分類":
-            sector = info["sector_jp"] or "未分類"
-            h["sector"] = sector
+            sector = info["sector_jp"] or ""
+        if not sector or sector == "未分類":
+            if h["ticker"].endswith(".T"):
+                code_s = h["ticker"].replace(".T", "")
+                sector = fetch_sector_jp(code_s) or "未分類"
+            else:
+                sector = "未分類"
+        h["sector"] = sector
 
         # 会社名（日本語優先）
         name = h.get("name", "")
