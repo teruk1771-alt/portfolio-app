@@ -1311,18 +1311,19 @@ authenticator = stauth.Authenticate(
     _cookie.get("key", "change_this_secret_key"),
     int(_cookie.get("expiry_days", 30)),
 )
-name, authentication_status, username = authenticator.login("🔐 ログイン", "main")
+authenticator.login(location="main", fields={
+    "Form name": "🔐 ログイン",
+    "Username": "ユーザー名",
+    "Password": "パスワード",
+    "Login": "ログイン",
+})
 
-if authentication_status is False:
+if st.session_state.get("authentication_status") is False:
     st.error("ユーザー名またはパスワードが違います")
     st.stop()
-elif authentication_status is None:
+elif not st.session_state.get("authentication_status"):
     st.info("ユーザー名とパスワードを入力してください")
     st.stop()
-
-# セッションに保存（ユーザー切替検出に使用）
-st.session_state["username"] = username
-st.session_state["name"] = name
 
 # ログイン済み
 st.title("高配当株ポートフォリオ管理ツール")
@@ -1356,7 +1357,7 @@ else:
 st.sidebar.divider()
 
 # ログアウト
-st.sidebar.write(f"👤 {name} でログイン中")
+st.sidebar.write(f"👤 {st.session_state.get('name', '')} でログイン中")
 authenticator.logout("ログアウト", "sidebar")
 st.sidebar.divider()
 
