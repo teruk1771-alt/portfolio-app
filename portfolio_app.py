@@ -1487,7 +1487,7 @@ total_value = df["評価額"].sum()
 total_cost = df["取得総額"].sum()
 total_div_before = df["年間配当(税引前)"].sum()
 total_div_after = df["年間配当(税引後)"].sum()
-portfolio_yield = total_div_after / total_value if total_value else 0
+portfolio_yield = total_div_after / total_cost if total_cost else 0
 defensive_value = df.loc[df["景気区分"] == "ディフェンシブ", "評価額"].sum()
 defensive_ratio = defensive_value / total_value if total_value else 0
 
