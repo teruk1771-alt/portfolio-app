@@ -1397,6 +1397,27 @@ if st.session_state.holdings:
 st.sidebar.divider()
 st.sidebar.header("楽天証券CSV取り込み")
 
+with st.sidebar.expander("📋 CSVの取得方法"):
+    st.markdown("""
+**① 楽天証券にログイン**
+
+**② 保有証券ページを開く**
+「資産管理」→「保有証券一覧」
+
+**③ CSVをダウンロードまたはコピー**
+
+**ファイルで取り込む場合：**
+- ページ右上の「CSV」ボタンをクリック
+- ダウンロードした `.csv` ファイルを「ファイル」タブからアップロード
+
+**貼り付けで取り込む場合：**
+- 「国内株式」または「全資産」タブを開く
+- Ctrl+A（全選択）→ Ctrl+C（コピー）
+- 「貼り付け」タブにCtrl+V で貼り付け
+
+> 対応フォーマット：国内株式・全資産CSVどちらも可
+""")
+
 csv_tab1, csv_tab2 = st.sidebar.tabs(["貼り付け", "ファイル"])
 
 with csv_tab1:
