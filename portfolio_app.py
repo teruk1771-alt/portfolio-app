@@ -1167,14 +1167,25 @@ def build_portfolio_df(holdings: list[dict]) -> pd.DataFrame:
                 split_ratio = csv_price / yf_price
                 annual_div = annual_div * split_ratio
 
-        # セクター: 保存値 → yfinance → Yahoo Finance Japan プロフィール
+        # セクター: 保存値 → yfinance → Yahoo Finance Japan → 名称推定
         sector = h.get("sector", "")
         if not sector or sector == "未分類":
             sector = info["sector_jp"] or ""
         if not sector or sector == "未分類":
             if h["ticker"].endswith(".T"):
                 code_s = h["ticker"].replace(".T", "")
-                sector = fetch_sector_jp(code_s) or "未分類"
+                sector = fetch_sector_jp(code_s) or ""
+        if not sector or sector == "未分類":
+            # 銘柄名にREIT/リート/インフラが含まれる場合は不動産
+            name_check = (
+                h.get("name", "") + " " +
+                info.get("short_name", "") + " " +
+                info.get("long_name", "")
+            ).upper()
+            if "REIT" in name_check or "リート" in name_check or "INFRA" in name_check:
+                sector = "不動産"
+            elif info.get("quote_type", "") == "ETF" or "ETF" in name_check:
+                sector = "その他ETF"
             else:
                 sector = "未分類"
         h["sector"] = sector
