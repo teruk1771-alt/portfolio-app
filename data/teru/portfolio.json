@@ -1,0 +1,371 @@
+[
+  {
+    "ticker": "1343.T",
+    "shares": 200,
+    "cost": 1778.0,
+    "sector": "",
+    "name": "ＮＦＪ－ＲＥＩＴ",
+    "csv_price": 2065.0,
+    "account": "特定"
+  },
+  {
+    "ticker": "1343.T",
+    "shares": 300,
+    "cost": 1804.0,
+    "sector": "",
+    "name": "ＮＦＪ－ＲＥＩＴ",
+    "csv_price": 2065.0,
+    "account": "NISA"
+  },
+  {
+    "ticker": "1928.T",
+    "shares": 100,
+    "cost": 3485.0,
+    "sector": "",
+    "name": "積水ハウス",
+    "csv_price": 3649.0,
+    "account": "NISA"
+  },
+  {
+    "ticker": "2003.T",
+    "shares": 400,
+    "cost": 1782.5,
+    "sector": "",
+    "name": "日東富士製粉",
+    "csv_price": 1835.0,
+    "account": "NISA"
+  },
+  {
+    "ticker": "2169.T",
+    "shares": 200,
+    "cost": 1819.5,
+    "sector": "",
+    "name": "ＣＤＳ",
+    "csv_price": 1835.0,
+    "account": "NISA"
+  },
+  {
+    "ticker": "2353.T",
+    "shares": 1000,
+    "cost": 194.0,
+    "sector": "",
+    "name": "日本駐車場開発",
+    "csv_price": 280.0,
+    "account": "特定"
+  },
+  {
+    "ticker": "3003.T",
+    "shares": 100,
+    "cost": 1432.0,
+    "sector": "",
+    "name": "ヒューリック",
+    "csv_price": 1881.5,
+    "account": "特定"
+  },
+  {
+    "ticker": "3076.T",
+    "shares": 100,
+    "cost": 1965.0,
+    "sector": "",
+    "name": "あいホールディングス",
+    "csv_price": 2798.0,
+    "account": "特定"
+  },
+  {
+    "ticker": "3231.T",
+    "shares": 500,
+    "cost": 883.0,
+    "sector": "",
+    "name": "野村不動産ＨＬＤＧＳ",
+    "csv_price": 1047.0,
+    "account": "特定"
+  },
+  {
+    "ticker": "3333.T",
+    "shares": 100,
+    "cost": 1311.0,
+    "sector": "",
+    "name": "あさひ",
+    "csv_price": 1384.0,
+    "account": "NISA"
+  },
+  {
+    "ticker": "3817.T",
+    "shares": 100,
+    "cost": 4010.0,
+    "sector": "",
+    "name": "ＳＲＡホールディングス",
+    "csv_price": 4765.0,
+    "account": "特定"
+  },
+  {
+    "ticker": "3901.T",
+    "shares": 100,
+    "cost": 1569.3,
+    "sector": "",
+    "name": "マークラインズ",
+    "csv_price": 1535.0,
+    "account": "特定"
+  },
+  {
+    "ticker": "4008.T",
+    "shares": 500,
+    "cost": 931.0,
+    "sector": "",
+    "name": "住友精化",
+    "csv_price": 1253.0,
+    "account": "特定"
+  },
+  {
+    "ticker": "4042.T",
+    "shares": 100,
+    "cost": 2060.0,
+    "sector": "",
+    "name": "東ソー",
+    "csv_price": 2369.0,
+    "account": "特定"
+  },
+  {
+    "ticker": "4097.T",
+    "shares": 100,
+    "cost": 1133.0,
+    "sector": "",
+    "name": "高圧ガス",
+    "csv_price": 1100.0,
+    "account": "NISA"
+  },
+  {
+    "ticker": "4248.T",
+    "shares": 100,
+    "cost": 789.0,
+    "sector": "",
+    "name": "竹本容器",
+    "csv_price": 885.0,
+    "account": "特定"
+  },
+  {
+    "ticker": "4540.T",
+    "shares": 100,
+    "cost": 3742.0,
+    "sector": "",
+    "name": "ツムラ",
+    "csv_price": 3779.0,
+    "account": "特定"
+  },
+  {
+    "ticker": "4674.T",
+    "shares": 100,
+    "cost": 1447.0,
+    "sector": "",
+    "name": "クレスコ",
+    "csv_price": 1447.0,
+    "account": "特定"
+  },
+  {
+    "ticker": "6073.T",
+    "shares": 100,
+    "cost": 1613.0,
+    "sector": "",
+    "name": "アサンテ",
+    "csv_price": 1519.0,
+    "account": "NISA"
+  },
+  {
+    "ticker": "6345.T",
+    "shares": 200,
+    "cost": 1379.9,
+    "sector": "",
+    "name": "アイチコーポレーション",
+    "csv_price": 1398.0,
+    "account": "NISA"
+  },
+  {
+    "ticker": "6381.T",
+    "shares": 100,
+    "cost": 1646.0,
+    "sector": "",
+    "name": "アネスト岩田",
+    "csv_price": 1652.0,
+    "account": "NISA"
+  },
+  {
+    "ticker": "6432.T",
+    "shares": 100,
+    "cost": 4300.0,
+    "sector": "",
+    "name": "竹内製作所",
+    "csv_price": 7160.0,
+    "account": "特定"
+  },
+  {
+    "ticker": "6785.T",
+    "shares": 100,
+    "cost": 2664.0,
+    "sector": "",
+    "name": "鈴木",
+    "csv_price": 2835.0,
+    "account": "特定"
+  },
+  {
+    "ticker": "7723.T",
+    "shares": 100,
+    "cost": 3030.0,
+    "sector": "",
+    "name": "愛知時計",
+    "csv_price": 2966.0,
+    "account": "特定"
+  },
+  {
+    "ticker": "7749.T",
+    "shares": 100,
+    "cost": 2737.0,
+    "sector": "",
+    "name": "メディキット",
+    "csv_price": 2981.0,
+    "account": "特定"
+  },
+  {
+    "ticker": "7820.T",
+    "shares": 100,
+    "cost": 790.0,
+    "sector": "",
+    "name": "ニホンフラッシュ",
+    "csv_price": 807.0,
+    "account": "NISA"
+  },
+  {
+    "ticker": "7949.T",
+    "shares": 100,
+    "cost": 2293.0,
+    "sector": "",
+    "name": "小松ウオール工業",
+    "csv_price": 2620.0,
+    "account": "特定"
+  },
+  {
+    "ticker": "7989.T",
+    "shares": 100,
+    "cost": 1586.0,
+    "sector": "",
+    "name": "立川ブラインド",
+    "csv_price": 2615.0,
+    "account": "特定"
+  },
+  {
+    "ticker": "7994.T",
+    "shares": 100,
+    "cost": 1950.0,
+    "sector": "",
+    "name": "オカムラ",
+    "csv_price": 2575.0,
+    "account": "特定"
+  },
+  {
+    "ticker": "8058.T",
+    "shares": 100,
+    "cost": 2467.0,
+    "sector": "",
+    "name": "三菱商事",
+    "csv_price": 5307.0,
+    "account": "特定"
+  },
+  {
+    "ticker": "8130.T",
+    "shares": 100,
+    "cost": 2970.0,
+    "sector": "",
+    "name": "サンゲツ",
+    "csv_price": 3045.0,
+    "account": "NISA"
+  },
+  {
+    "ticker": "8309.T",
+    "shares": 100,
+    "cost": 3643.0,
+    "sector": "",
+    "name": "三井住友トラストグルー",
+    "csv_price": 5336.0,
+    "account": "特定"
+  },
+  {
+    "ticker": "8584.T",
+    "shares": 100,
+    "cost": 3903.0,
+    "sector": "",
+    "name": "ジャックス",
+    "csv_price": 4070.0,
+    "account": "NISA"
+  },
+  {
+    "ticker": "8593.T",
+    "shares": 100,
+    "cost": 958.5,
+    "sector": "",
+    "name": "三菱ＨＣキャピタル",
+    "csv_price": 1469.5,
+    "account": "特定"
+  },
+  {
+    "ticker": "8725.T",
+    "shares": 100,
+    "cost": 3207.0,
+    "sector": "",
+    "name": "ＭＳ＆ＡＤ",
+    "csv_price": 4077.0,
+    "account": "特定"
+  },
+  {
+    "ticker": "9304.T",
+    "shares": 400,
+    "cost": 967.0,
+    "sector": "",
+    "name": "渋沢倉庫",
+    "csv_price": 1333.0,
+    "account": "特定"
+  },
+  {
+    "ticker": "9381.T",
+    "shares": 100,
+    "cost": 2257.0,
+    "sector": "",
+    "name": "エーアイテイー",
+    "csv_price": 2234.0,
+    "account": "NISA"
+  },
+  {
+    "ticker": "9432.T",
+    "shares": 100,
+    "cost": 155.7,
+    "sector": "",
+    "name": "ＮＴＴ",
+    "csv_price": 153.1,
+    "account": "特定"
+  },
+  {
+    "ticker": "9513.T",
+    "shares": 100,
+    "cost": 2434.0,
+    "sector": "",
+    "name": "電源開発",
+    "csv_price": 4107.0,
+    "account": "NISA"
+  },
+  {
+    "ticker": "9757.T",
+    "shares": 100,
+    "cost": 1132.6,
+    "sector": "",
+    "name": "船井総研ホールディン",
+    "csv_price": 1156.0,
+    "account": "特定"
+  },
+  {
+    "ticker": "9769.T",
+    "shares": 100,
+    "cost": 2003.0,
+    "sector": "",
+    "name": "学究社",
+    "csv_price": 2374.0,
+    "account": "特定"
+  }
+]
