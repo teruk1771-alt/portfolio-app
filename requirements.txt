@@ -4,3 +4,5 @@ plotly
 yfinance
 requests
 beautifulsoup4
+streamlit-authenticator==0.3.3
+bcrypt
