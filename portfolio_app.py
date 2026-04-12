@@ -622,19 +622,28 @@ def fetch_company_details(code: str) -> dict:
         )
         prof_resp.encoding = "utf-8"
         if prof_resp.status_code == 200:
-            prof_soup = BeautifulSoup(prof_resp.text, "html.parser")
-            # th のテキストで検索（クラス名は変動するため text で照合）
-            for th in prof_soup.find_all("th"):
-                label = th.get_text(strip=True)
-                td = th.find_next_sibling("td")
-                if not td:
-                    continue
-                p = td.find("p")
-                text = (p.get_text(strip=True) if p else td.get_text(strip=True))
-                if label == "設立年月日" and not result["founded"]:
-                    result["founded"] = text
-                elif label == "業種" and not result["industry_jp"]:
-                    result["industry_jp"] = text
+            page_text = prof_resp.text
+            # Next.js JSONペイロードから正規表現で設立年月日を取得
+            if not result["founded"]:
+                m = re.search(
+                    r'設立年月日.{0,60}?([0-9]{4}年[0-9]{1,2}月[0-9]{1,2}日)',
+                    page_text,
+                )
+                if m:
+                    result["founded"] = m.group(1)
+            # 業種も同様に取得
+            if not result["industry_jp"]:
+                prof_soup = BeautifulSoup(page_text, "html.parser")
+                for th in prof_soup.find_all("th"):
+                    label = th.get_text(strip=True)
+                    td = th.find_next_sibling("td")
+                    if not td:
+                        continue
+                    p = td.find("p")
+                    text = (p.get_text(strip=True) if p else td.get_text(strip=True))
+                    if label == "業種":
+                        result["industry_jp"] = text
+                        break
     except Exception:
         pass
 
