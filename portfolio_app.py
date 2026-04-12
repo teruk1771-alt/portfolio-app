@@ -1859,15 +1859,25 @@ with tab3:
     eco_agg = df.groupby("景気区分")["評価額"].sum().reset_index()
     # 「―」(未分類)を除外
     eco_agg = eco_agg[eco_agg["景気区分"] != "―"]
+    total_eco = eco_agg["評価額"].sum()
+    eco_agg["割合"] = eco_agg["評価額"] / total_eco if total_eco else 0
+    eco_agg["ラベル"] = eco_agg.apply(
+        lambda r: f"{r['景気区分']}<br>{r['割合']:.1%}<br>¥{r['評価額']:,.0f}", axis=1
+    )
     colors = {"ディフェンシブ": "#2ecc71", "景気敏感": "#e74c3c"}
-    fig_eco = px.pie(
-        eco_agg, names="景気区分", values="評価額",
+    eco_agg["色"] = eco_agg["景気区分"].map(colors).fillna("#aaaaaa")
+    fig_eco = px.treemap(
+        eco_agg, path=["ラベル"], values="評価額",
         title="ディフェンシブ vs 景気敏感",
-        hole=0.4,
         color="景気区分",
         color_discrete_map=colors,
     )
-    fig_eco.update_traces(textinfo="label+percent+value", textposition="outside")
+    fig_eco.update_traces(
+        textinfo="label",
+        textfont=dict(size=14),
+        hovertemplate="<b>%{label}</b><extra></extra>",
+    )
+    fig_eco.update_layout(height=300, coloraxis_showscale=False, margin=dict(t=40, l=4, r=4, b=4))
     st.plotly_chart(fig_eco, use_container_width=True)
 
     fig_gauge = go.Figure(go.Indicator(
