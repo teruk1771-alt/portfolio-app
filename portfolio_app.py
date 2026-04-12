@@ -822,14 +822,15 @@ def fetch_stock_info(ticker: str) -> dict:
             except Exception:
                 pass
 
+        quote_type = info.get("quoteType", "")
         # ETF/REITなどセクター情報がない場合、名前から推定
         if not sector_jp:
             name_upper = (long_name + " " + short_name).upper()
-            quote_type = info.get("quoteType", "")
-            if "REIT" in name_upper:
-                sector_jp = "不動産"
-            elif quote_type == "ETF":
+            # ETF判定を先に行う（REIT ETFはその他ETFに分類）
+            if quote_type == "ETF":
                 sector_jp = "その他ETF"
+            elif "REIT" in name_upper or "リート" in name_upper:
+                sector_jp = "不動産"
 
         return {
             "current_price": current_price,
@@ -837,6 +838,7 @@ def fetch_stock_info(ticker: str) -> dict:
             "annual_dividend_per_share": trailing_dividend,
             "sector_en": sector_en,
             "sector_jp": sector_jp,
+            "quote_type": quote_type,
             "short_name": short_name,
             "long_name": long_name,
         }
@@ -845,6 +847,7 @@ def fetch_stock_info(ticker: str) -> dict:
             "current_price": 0, "dividend_yield": 0,
             "annual_dividend_per_share": 0,
             "sector_en": "", "sector_jp": "",
+            "quote_type": "",
             "short_name": "", "long_name": "",
         }
 
@@ -1185,10 +1188,11 @@ def build_portfolio_df(holdings: list[dict]) -> pd.DataFrame:
                 info.get("short_name", "") + " " +
                 info.get("long_name", "")
             ).upper()
-            if "REIT" in name_check or "リート" in name_check or "INFRA" in name_check:
-                sector = "不動産"
-            elif info.get("quote_type", "") == "ETF" or "ETF" in name_check:
+            # ETF判定を先に行う（REIT ETFはその他ETFに分類）
+            if info.get("quote_type", "") == "ETF" or "ETF" in name_check:
                 sector = "その他ETF"
+            elif "REIT" in name_check or "リート" in name_check or "INFRA" in name_check:
+                sector = "不動産"
             else:
                 sector = "未分類"
         h["sector"] = sector
