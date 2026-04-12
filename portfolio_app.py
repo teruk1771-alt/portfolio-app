@@ -529,14 +529,15 @@ def fetch_sector_jp(stock_code: str) -> str:
 
 @st.cache_data(ttl=86400)
 def fetch_jp_name(ticker: str) -> str:
-    """Yahoo Finance Japanから日本語銘柄名を取得"""
+    """Yahoo Finance Japan → kabutan → yfinance の順に日本語銘柄名を取得"""
     code = ticker.replace(".T", "")
+
+    # ① Yahoo Finance Japan のタイトルから取得
     try:
         url = f"https://finance.yahoo.co.jp/quote/{code}.T"
         resp = requests.get(url, timeout=5, headers={"User-Agent": "Mozilla/5.0"})
         if resp.status_code == 200:
             soup = BeautifulSoup(resp.text, "html.parser")
-            # ページタイトルから銘柄名を抽出 (例: "トヨタ自動車(株)【7203】...")
             title = soup.find("title")
             if title:
                 t = title.get_text()
@@ -548,8 +549,42 @@ def fetch_jp_name(ticker: str) -> str:
                 m2 = re.match(r"(.+?)【", t)
                 if m2:
                     return m2.group(1).strip()
+                # h1タグから取得を試みる
+                h1 = soup.find("h1")
+                if h1:
+                    name = h1.get_text(strip=True)
+                    if name and not name.isdigit():
+                        return name
     except Exception:
         pass
+
+    # ② kabutan のページタイトルから取得
+    try:
+        url2 = f"https://kabutan.jp/stock/?code={code}"
+        resp2 = requests.get(url2, timeout=5, headers={"User-Agent": "Mozilla/5.0"})
+        resp2.encoding = "utf-8"
+        if resp2.status_code == 200:
+            soup2 = BeautifulSoup(resp2.text, "html.parser")
+            title2 = soup2.find("title")
+            if title2:
+                t2 = title2.get_text()
+                m3 = re.match(r"(.+?)[\(（【\[]", t2)
+                if m3:
+                    name = m3.group(1).strip()
+                    if name and not name.isdigit():
+                        return name
+    except Exception:
+        pass
+
+    # ③ yfinance の shortName / longName（英語表記だが最終手段）
+    try:
+        info = yf.Ticker(f"{code}.T").info
+        name = info.get("shortName") or info.get("longName") or ""
+        if name:
+            return name
+    except Exception:
+        pass
+
     return ""
 
 
