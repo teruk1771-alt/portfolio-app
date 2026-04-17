@@ -471,9 +471,10 @@ def fetch_high_dividend_candidates(min_yield: float = 3.5, max_pages: int = 8) -
 
 
 def get_economy_type(sector: str) -> str:
-    if sector in DEFENSIVE_SECTORS:
+    s = normalize_sector(sector.strip())  # 念のため正規化してから判定
+    if s in DEFENSIVE_SECTORS:
         return "ディフェンシブ"
-    if sector in CYCLICAL_SECTORS:
+    if s in CYCLICAL_SECTORS:
         return "景気敏感"
     return "―"
 
@@ -561,6 +562,11 @@ def fetch_sector_jp(stock_code: str) -> str:
         page_text = r.text
         soup = BeautifulSoup(page_text, "html.parser")
 
+        def _map(raw: str) -> str:
+            """取得した業種名をTSE33正式名に変換し、旧略称も正規化する"""
+            mapped = YJ_INDUSTRY_TO_SECTOR.get(raw, raw)
+            return normalize_sector(mapped.strip())
+
         # ① th → sibling td（"業種分類" / "業種" どちらにも対応）
         for th in soup.find_all("th"):
             if "業種" in th.get_text(strip=True):
@@ -568,7 +574,7 @@ def fetch_sector_jp(stock_code: str) -> str:
                 if td:
                     industry_raw = td.get_text(strip=True)
                     if industry_raw:
-                        return YJ_INDUSTRY_TO_SECTOR.get(industry_raw, industry_raw)
+                        return _map(industry_raw)
 
         # ② dt → sibling dd
         for dt in soup.find_all("dt"):
@@ -577,7 +583,7 @@ def fetch_sector_jp(stock_code: str) -> str:
                 if dd:
                     industry_raw = dd.get_text(strip=True)
                     if industry_raw:
-                        return YJ_INDUSTRY_TO_SECTOR.get(industry_raw, industry_raw)
+                        return _map(industry_raw)
 
         # ③ ページテキスト regex（"業種" の近傍に既知業種名）
         # 長い名前を先にチェックして部分マッチを防ぐ
@@ -585,8 +591,7 @@ def fetch_sector_jp(stock_code: str) -> str:
         pattern = r'業種[分類]*[\s\S]{0,40}?(' + '|'.join(re.escape(s) for s in known) + ')'
         m = re.search(pattern, page_text)
         if m:
-            industry_raw = m.group(1)
-            return YJ_INDUSTRY_TO_SECTOR.get(industry_raw, industry_raw)
+            return _map(m.group(1))
 
     except Exception:
         pass
