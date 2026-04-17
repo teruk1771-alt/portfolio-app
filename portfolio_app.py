@@ -887,7 +887,10 @@ def fetch_dividend_kabutan(stock_code: str) -> float:
 
 @st.cache_data(ttl=86400)
 def fetch_dividend_months(ticker: str) -> list[int]:
-    """yfinance の配当履歴から直近2年の支払い月リストを返す（重複除去）"""
+    """yfinance の配当履歴（権利落ち日）から直近2年の実際の支払い月を返す。
+    日本株(.T): 権利落ち月 + 3ヶ月 = 口座入金月（例: 3月→6月、9月→12月）
+    海外株: 権利落ち月をそのまま使用（通常同月〜翌月に入金）
+    """
     try:
         divs = yf.Ticker(ticker).dividends
         if divs.empty:
@@ -896,8 +899,13 @@ def fetch_dividend_months(ticker: str) -> list[int]:
         recent = divs[divs.index >= two_years_ago.strftime("%Y-%m-%d")]
         if recent.empty:
             return []
-        months = sorted(set(int(d.month) for d in recent.index))
-        return months
+        ex_months = sorted(set(int(d.month) for d in recent.index))
+        if ticker.endswith(".T"):
+            # 日本株: 権利落ち月 → 支払月（+3ヶ月）
+            # (m-1+3)%12+1 で 12月→3月 の繰り上がりも正しく処理
+            pay_months = sorted(set(((m - 1 + 3) % 12) + 1 for m in ex_months))
+            return pay_months
+        return ex_months
     except Exception:
         return []
 
@@ -1928,8 +1936,8 @@ with tab2:
     fig_yield.update_layout(xaxis_tickformat=".1%", yaxis_title="")
     st.plotly_chart(fig_yield, use_container_width=True)
 
-    # 月別配当カレンダー
-    st.subheader("配当月カレンダー")
+    # 月別配当カレンダー（支払月ベース）
+    st.subheader("配当月カレンダー（口座入金月）")
     monthly_div = {m: 0.0 for m in range(1, 13)}
     monthly_stocks: dict[int, list[str]] = {m: [] for m in range(1, 13)}
     for _, row in df.iterrows():
@@ -1949,7 +1957,7 @@ with tab2:
     })
     fig_cal = px.bar(
         month_df, x="月", y="配当金(税引後)",
-        title="月別 受取配当金（税引後・概算）",
+        title="月別 受取配当金（税引後・概算）― 口座入金月ベース",
         text_auto=",.0f",
         hover_data={"銘柄": True},
         color_discrete_sequence=["#3498db"],
