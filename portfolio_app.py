@@ -1836,9 +1836,9 @@ with st.expander("📉 買い増し検討チャート（直近高値から -20% 
     )
 
     # -20%以下の銘柄をコンパクトなカードで表示（集約後のgain_dfを使用）
-    alerts = gain_df[gain_df["損益率"] <= DROP_ALERT_THRESHOLD]
+    alerts = gain_df[gain_df["下落率"] <= DROP_ALERT_THRESHOLD]
     if not alerts.empty:
-        st.error(f"⚠️ {len(alerts)}銘柄が -20%以下")
+        st.error(f"⚠️ {len(alerts)}銘柄が直近高値から -20%以下")
         cols = st.columns(min(len(alerts), 3))
         for i, (_, row) in enumerate(alerts.iterrows()):
             with cols[i % min(len(alerts), 3)]:
@@ -1847,13 +1847,13 @@ with st.expander("📉 買い増し検討チャート（直近高値から -20% 
                     f"border-radius:6px;padding:8px;font-size:0.85em;text-align:center;'>"
                     f"<b>{row['会社名'] or row['銘柄']}</b><br>"
                     f"<span style='color:#e74c3c;font-size:1.1em;font-weight:bold;'>"
-                    f"{row['損益率']:.1%}</span><br>"
-                    f"<small>取得総額 {cur}{row['取得総額']:,.0f} → 評価額 {cur}{row['評価額']:,.0f}</small>"
+                    f"{row['下落率']:.1%}</span><br>"
+                    f"<small>52週高値 {cur}{row['高値52w']:,.0f} → 現在 {cur}{row['現在株価']:,.0f}</small>"
                     f"</div>",
                     unsafe_allow_html=True,
                 )
     else:
-        st.success("✅ 20%以上下落している銘柄はありません")
+        st.success("✅ 直近高値から20%以上下落している銘柄はありません")
 
 st.divider()
 
