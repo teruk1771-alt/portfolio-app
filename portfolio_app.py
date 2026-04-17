@@ -1913,13 +1913,36 @@ with tab2:
         税引前=("年間配当(税引前)", "sum"),
         税引後=("年間配当(税引後)", "sum"),
     ).reset_index()
+    acct_melt = acct_div.melt(id_vars="口座", var_name="区分", value_name="金額")
+    acct_melt["金額テキスト"] = acct_melt["金額"].apply(
+        lambda v: f"{cur}{v:,.0f}"
+    )
     fig_acct = px.bar(
-        acct_div.melt(id_vars="口座", var_name="区分", value_name="金額"),
+        acct_melt,
         x="口座", y="金額", color="区分", barmode="group",
         title="口座別 年間配当（税引前 vs 税引後）",
-        text_auto=f"{cur},.0f",
+        text="金額テキスト",
+        color_discrete_map={"税引前": "#5b9bd5", "税引後": "#70ad47"},
     )
-    fig_acct.update_layout(yaxis_title="")
+    fig_acct.update_traces(
+        textposition="outside",
+        textfont=dict(size=13),
+    )
+    fig_acct.update_layout(
+        yaxis=dict(
+            title="",
+            tickprefix=cur,
+            tickformat=",.0f",
+            showgrid=True,
+            gridcolor="#eeeeee",
+        ),
+        xaxis_title="",
+        plot_bgcolor="white",
+        legend_title_text="",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        height=380,
+        margin=dict(t=60, b=20),
+    )
     st.plotly_chart(fig_acct, use_container_width=True)
 
     # 配当利回り比較
