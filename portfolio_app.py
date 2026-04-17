@@ -220,6 +220,12 @@ CYCLICAL_SECTORS = {
 
 SECTOR_OPTIONS = sorted(DEFENSIVE_SECTORS | CYCLICAL_SECTORS)
 
+# 楽天証券準拠の手動セクター上書き
+# Yahoo Finance Japan やyfinanceが誤分類する銘柄をここで正しい業種に固定する
+MANUAL_SECTOR_OVERRIDE: dict[str, str] = {
+    "2169.T": "サービス業",   # CDS：楽天証券ではサービス業
+}
+
 DROP_ALERT_THRESHOLD = -0.20  # 20%下落
 TAX_RATE_TOKUTEI = 0.20315  # 特定口座の配当課税率（所得税15.315% + 住民税5%）
 IRBANK_MIN_YEARS = 10  # スクリーニングに必要な最低年数
@@ -1309,11 +1315,15 @@ def build_portfolio_df(holdings: list[dict]) -> pd.DataFrame:
                 annual_div = annual_div * split_ratio
 
         # セクター取得優先順:
+        #   ⓪ MANUAL_SECTOR_OVERRIDE（楽天証券準拠の手動上書き）最優先
         #   日本株(.T): Yahoo Finance Japan（TSE33直接） → yfinance → 名称推定
         #   米国株等:   保存値（正規化済） → yfinance → 名称推定
         saved_sector = normalize_sector(h.get("sector", ""))
-        sector = ""
-        if h["ticker"].endswith(".T"):
+        sector = MANUAL_SECTOR_OVERRIDE.get(h["ticker"], "")
+        if sector:
+            h["sector"] = sector
+            # 手動上書きがある場合は後続処理をスキップ
+        elif h["ticker"].endswith(".T"):
             # ① Yahoo Finance Japan（東証33業種を直接返す）
             code_s = h["ticker"].replace(".T", "")
             sector = fetch_sector_jp(code_s) or ""
