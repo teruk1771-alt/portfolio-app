@@ -78,13 +78,13 @@ INDUSTRY_TO_JP_SECTOR = {
     "Drug Manufacturers - General": "医薬品",
     "Drug Manufacturers - Specialty & Generic": "医薬品",
     "Biotechnology": "医薬品",
-    # 石油・石炭
-    "Oil & Gas Integrated": "石油・石炭", "Oil & Gas E&P": "石油・石炭",
-    "Oil & Gas Refining & Marketing": "石油・石炭",
+    # 石油・石炭製品
+    "Oil & Gas Integrated": "石油・石炭製品", "Oil & Gas E&P": "石油・石炭製品",
+    "Oil & Gas Refining & Marketing": "石油・石炭製品",
     # ゴム製品
     "Rubber & Plastics": "ゴム製品", "Auto Parts": "ゴム製品",
-    # ガラス・土石
-    "Building Materials": "ガラス・土石",
+    # ガラス・土石製品
+    "Building Materials": "ガラス・土石製品",
     # 鉄鋼
     "Steel": "鉄鋼",
     # 非鉄金属
@@ -114,70 +114,70 @@ INDUSTRY_TO_JP_SECTOR = {
     "Building Products & Equipment": "その他製品",
     "Business Equipment & Supplies": "その他製品",
     "Leisure": "その他製品",
-    # 電気・ガス
-    "Utilities - Regulated Electric": "電気・ガス",
-    "Utilities - Renewable": "電気・ガス",
-    "Utilities - Regulated Gas": "電気・ガス",
-    "Utilities - Diversified": "電気・ガス",
-    "Utilities - Independent Power Producers": "電気・ガス",
-    # 陸運
-    "Railroads": "陸運", "Trucking": "陸運",
-    # 海運
-    "Marine Shipping": "海運",
-    # 空運
-    "Airlines": "空運",
-    # 倉庫・運輸
-    "Integrated Freight & Logistics": "倉庫・運輸",
-    "Infrastructure Operations": "倉庫・運輸",
-    # 情報・通信
-    "Telecom Services": "情報・通信",
-    "Information Technology Services": "情報・通信",
-    "Software - Application": "情報・通信",
-    "Software - Infrastructure": "情報・通信",
-    "Internet Content & Information": "情報・通信",
-    "Communication Equipment": "情報・通信",
-    "Electronic Gaming & Multimedia": "情報・通信",
-    # 卸売
-    "Conglomerates": "卸売", "Industrial Distribution": "卸売",
-    # 小売
-    "Specialty Retail": "小売",
-    "Home Improvement Retail": "小売",
-    "Department Stores": "小売",
-    "Discount Stores": "小売",
-    "Grocery Stores": "小売",
-    # 銀行
-    "Banks - Regional": "銀行", "Banks - Diversified": "銀行",
-    # 証券・先物
-    "Capital Markets": "証券・先物",
-    # 保険
-    "Insurance - Property & Casualty": "保険",
-    "Insurance - Life": "保険",
-    "Insurance - Diversified": "保険",
-    "Insurance Brokers": "保険",
-    # その他金融
-    "Credit Services": "その他金融",
-    "Financial Data & Stock Exchanges": "その他金融",
-    "Financial Conglomerates": "その他金融",
-    # 不動産
-    "Real Estate Services": "不動産",
-    "Real Estate - Diversified": "不動産",
-    "Real Estate - Development": "不動産",
-    "REIT - Diversified": "不動産",
-    "REIT - Residential": "不動産",
-    "REIT - Office": "不動産",
-    "REIT - Retail": "不動産",
-    # 建設
-    "Residential Construction": "建設",
-    "Engineering & Construction": "建設",
-    # サービス
-    "Consulting Services": "サービス",
-    "Staffing & Employment Services": "サービス",
-    "Education & Training Services": "サービス",
-    "Security & Protection Services": "サービス",
-    "Waste Management": "サービス",
-    "Rental & Leasing Services": "サービス",
+    # 電気・ガス業
+    "Utilities - Regulated Electric": "電気・ガス業",
+    "Utilities - Renewable": "電気・ガス業",
+    "Utilities - Regulated Gas": "電気・ガス業",
+    "Utilities - Diversified": "電気・ガス業",
+    "Utilities - Independent Power Producers": "電気・ガス業",
+    # 陸運業
+    "Railroads": "陸運業", "Trucking": "陸運業",
+    # 海運業
+    "Marine Shipping": "海運業",
+    # 空運業
+    "Airlines": "空運業",
+    # 倉庫・運輸関連業
+    "Integrated Freight & Logistics": "倉庫・運輸関連業",
+    "Infrastructure Operations": "倉庫・運輸関連業",
+    # 情報・通信業
+    "Telecom Services": "情報・通信業",
+    "Information Technology Services": "情報・通信業",
+    "Software - Application": "情報・通信業",
+    "Software - Infrastructure": "情報・通信業",
+    "Internet Content & Information": "情報・通信業",
+    "Communication Equipment": "情報・通信業",
+    "Electronic Gaming & Multimedia": "情報・通信業",
+    # 卸売業
+    "Conglomerates": "卸売業", "Industrial Distribution": "卸売業",
+    # 小売業
+    "Specialty Retail": "小売業",
+    "Home Improvement Retail": "小売業",
+    "Department Stores": "小売業",
+    "Discount Stores": "小売業",
+    "Grocery Stores": "小売業",
+    # 銀行業
+    "Banks - Regional": "銀行業", "Banks - Diversified": "銀行業",
+    # 証券、商品先物取引業
+    "Capital Markets": "証券、商品先物取引業",
+    # 保険業
+    "Insurance - Property & Casualty": "保険業",
+    "Insurance - Life": "保険業",
+    "Insurance - Diversified": "保険業",
+    "Insurance Brokers": "保険業",
+    # その他金融業
+    "Credit Services": "その他金融業",
+    "Financial Data & Stock Exchanges": "その他金融業",
+    "Financial Conglomerates": "その他金融業",
+    # 不動産業
+    "Real Estate Services": "不動産業",
+    "Real Estate - Diversified": "不動産業",
+    "Real Estate - Development": "不動産業",
+    "REIT - Diversified": "不動産業",
+    "REIT - Residential": "不動産業",
+    "REIT - Office": "不動産業",
+    "REIT - Retail": "不動産業",
+    # 建設業
+    "Residential Construction": "建設業",
+    "Engineering & Construction": "建設業",
+    # サービス業
+    "Consulting Services": "サービス業",
+    "Staffing & Employment Services": "サービス業",
+    "Education & Training Services": "サービス業",
+    "Security & Protection Services": "サービス業",
+    "Waste Management": "サービス業",
+    "Rental & Leasing Services": "サービス業",
     # 家具・インテリア（小売寄り）
-    "Furnishings, Fixtures & Appliances": "小売",
+    "Furnishings, Fixtures & Appliances": "小売業",
 }
 
 # yfinance sector をフォールバックに使う（industryが未マッチ時）
@@ -185,39 +185,37 @@ SECTOR_EN_TO_JP_FALLBACK = {
     "Consumer Defensive": "食料品",
     "Consumer Staples": "食料品",
     "Healthcare": "医薬品",
-    "Utilities": "電気・ガス",
-    "Communication Services": "情報・通信",
-    "Financial Services": "その他金融",
-    "Financials": "その他金融",
-    "Energy": "石油・石炭",
+    "Utilities": "電気・ガス業",
+    "Communication Services": "情報・通信業",
+    "Financial Services": "その他金融業",
+    "Financials": "その他金融業",
+    "Energy": "石油・石炭製品",
     "Basic Materials": "化学",
     "Materials": "化学",
     "Industrials": "機械",
-    "Consumer Cyclical": "小売",
-    "Consumer Discretionary": "小売",
-    "Technology": "情報・通信",
-    "Information Technology": "情報・通信",
-    "Real Estate": "不動産",
+    "Consumer Cyclical": "小売業",
+    "Consumer Discretionary": "小売業",
+    "Technology": "情報・通信業",
+    "Information Technology": "情報・通信業",
+    "Real Estate": "不動産業",
 }
 
-# 東証業種 → 景気区分
+# 東証33業種分類（楽天証券表示に準拠）→ 景気区分
 DEFENSIVE_SECTORS = {
-    "食料品", "医薬品", "電気・ガス", "情報・通信",
-    "陸運", "倉庫・運輸", "パルプ・紙",
-    # 安定的な需要・収益基盤を持つ業種
-    "サービス",      # 教育・コンサル・住宅メンテ等、生活・企業に不可欠
-    "その他製品",    # 建材・オフィス家具等、安定需要
-    "金属製品",      # 建築・住宅向け製品、安定需要
+    "食料品", "医薬品", "電気・ガス業", "情報・通信業",
+    "陸運業", "倉庫・運輸関連業", "パルプ・紙",
+    "サービス業",    # 教育・コンサル・住宅メンテ等
+    "その他製品",    # 建材・オフィス家具等
+    "金属製品",      # 建築・住宅向け製品
     "その他ETF",     # ETF（分散投資・安定収益）
-    "サービス業",    # YJ業種名対応
 }
 CYCLICAL_SECTORS = {
     "化学", "鉄鋼", "非鉄金属", "機械", "電気機器", "輸送用機器",
-    "銀行", "証券・先物", "保険", "その他金融",
-    "不動産", "建設", "海運", "空運",
-    "石油・石炭", "ゴム製品", "ガラス・土石",
-    "繊維製品", "卸売", "小売", "精密機器",
-    "卸売業", "小売業", "建設業",  # YJ業種名そのまま対応
+    "銀行業", "証券、商品先物取引業", "保険業", "その他金融業",
+    "不動産業", "建設業", "海運業", "空運業",
+    "石油・石炭製品", "ゴム製品", "ガラス・土石製品",
+    "繊維製品", "卸売業", "小売業", "精密機器",
+    "水産・農林業", "鉱業",
 }
 
 SECTOR_OPTIONS = sorted(DEFENSIVE_SECTORS | CYCLICAL_SECTORS)
@@ -483,24 +481,41 @@ def get_economy_type(sector: str) -> str:
 # ─── 日本株 業種取得 ──────────────────────────────────────────
 
 # Yahoo Finance Japan の業種名 → 東証業種分類マッピング
+# Yahoo Finance Japan 業種名 → 東証33業種正式名称（楽天証券準拠）
 YJ_INDUSTRY_TO_SECTOR = {
-    "水産・農林業": "水産・農林業", "鉱業": "鉱業",
-    "建設業": "建設",           # 「建設業」→「建設」
-    "食料品": "食料品", "繊維製品": "繊維製品",
-    "パルプ・紙": "パルプ・紙", "化学": "化学", "医薬品": "医薬品",
-    "石油・石炭製品": "石油・石炭", "ゴム製品": "ゴム製品",
-    "ガラス・土石製品": "ガラス・土石", "鉄鋼": "鉄鋼",
-    "非鉄金属": "非鉄金属", "金属製品": "金属製品", "機械": "機械",
-    "電気機器": "電気機器", "輸送用機器": "輸送用機器",
-    "精密機器": "精密機器", "その他製品": "その他製品",
-    "電気・ガス業": "電気・ガス", "陸運業": "陸運",
-    "海運業": "海運", "空運業": "空運",
-    "倉庫・運輸関連業": "倉庫・運輸", "情報・通信業": "情報・通信",
-    "卸売業": "卸売業",         # CYCLICAL_SECTORSに合わせる
-    "小売業": "小売業",         # CYCLICAL_SECTORSに合わせる
-    "銀行業": "銀行", "証券、商品先物取引業": "証券・先物",
-    "保険業": "保険", "その他金融業": "その他金融",
-    "不動産業": "不動産", "サービス業": "サービス業",  # CYCLICAL_SECTORSに合わせる
+    "水産・農林業": "水産・農林業",
+    "鉱業": "鉱業",
+    "建設業": "建設業",
+    "食料品": "食料品",
+    "繊維製品": "繊維製品",
+    "パルプ・紙": "パルプ・紙",
+    "化学": "化学",
+    "医薬品": "医薬品",
+    "石油・石炭製品": "石油・石炭製品",
+    "ゴム製品": "ゴム製品",
+    "ガラス・土石製品": "ガラス・土石製品",
+    "鉄鋼": "鉄鋼",
+    "非鉄金属": "非鉄金属",
+    "金属製品": "金属製品",
+    "機械": "機械",
+    "電気機器": "電気機器",
+    "輸送用機器": "輸送用機器",
+    "精密機器": "精密機器",
+    "その他製品": "その他製品",
+    "電気・ガス業": "電気・ガス業",
+    "陸運業": "陸運業",
+    "海運業": "海運業",
+    "空運業": "空運業",
+    "倉庫・運輸関連業": "倉庫・運輸関連業",
+    "情報・通信業": "情報・通信業",
+    "卸売業": "卸売業",
+    "小売業": "小売業",
+    "銀行業": "銀行業",
+    "証券、商品先物取引業": "証券、商品先物取引業",
+    "保険業": "保険業",
+    "その他金融業": "その他金融業",
+    "不動産業": "不動産業",
+    "サービス業": "サービス業",
 }
 
 @st.cache_data(ttl=86400, show_spinner=False)
