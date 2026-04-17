@@ -1925,15 +1925,46 @@ with tab2:
     # 配当利回り比較
     yield_df = df[df["取得価格利回り"] > 0].copy()
     yield_df["表示名"] = yield_df.apply(
-        lambda r: f"{r['会社名'] or r['銘柄']}({r['口座']})", axis=1
+        lambda r: f"{r['会社名'] or r['銘柄']}（{r['口座']}）", axis=1
     )
-    fig_yield = px.bar(
-        yield_df.sort_values("取得価格利回り", ascending=True),
-        x="取得価格利回り", y="表示名", orientation="h",
+    yield_df = yield_df.sort_values("取得価格利回り", ascending=True).reset_index(drop=True)
+    yield_df["利回りテキスト"] = yield_df["取得価格利回り"].apply(lambda v: f"{v*100:.2f}%")
+
+    fig_yield = go.Figure(go.Bar(
+        x=yield_df["取得価格利回り"],
+        y=yield_df["表示名"],
+        orientation="h",
+        text=yield_df["利回りテキスト"],
+        textposition="outside",
+        textfont=dict(size=12, color="#333333"),
+        marker=dict(
+            color=yield_df["取得価格利回り"],
+            colorscale=[[0, "#a8d5a2"], [1, "#1a7a2e"]],
+            showscale=False,
+        ),
+        hovertemplate="%{y}<br>利回り: %{text}<extra></extra>",
+    ))
+    # 平均利回り基準線
+    avg_yield = yield_df["取得価格利回り"].mean()
+    fig_yield.add_vline(
+        x=avg_yield, line_dash="dash", line_color="#e67e22", line_width=1.5,
+        annotation_text=f"平均 {avg_yield*100:.2f}%",
+        annotation_position="top right",
+        annotation_font=dict(color="#e67e22", size=11),
+    )
+    max_yield = yield_df["取得価格利回り"].max()
+    fig_yield.update_layout(
         title="銘柄別 取得価格ベース配当利回り",
-        text_auto=".2%",
+        xaxis=dict(
+            tickformat=".1%",
+            range=[0, max_yield * 1.35],  # テキスト表示のための余白
+            showgrid=True, gridcolor="#eeeeee",
+        ),
+        yaxis_title="",
+        height=max(250, len(yield_df) * 32 + 80),
+        margin=dict(l=10, r=20, t=50, b=20),
+        plot_bgcolor="white",
     )
-    fig_yield.update_layout(xaxis_tickformat=".1%", yaxis_title="")
     st.plotly_chart(fig_yield, use_container_width=True)
 
     # 月別配当カレンダー（支払月ベース）
