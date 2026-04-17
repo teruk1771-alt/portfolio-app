@@ -470,8 +470,10 @@ def fetch_high_dividend_candidates(min_yield: float = 3.5, max_pages: int = 8) -
     return all_stocks
 
 
-def get_economy_type(sector: str) -> str:
-    s = normalize_sector(sector.strip())  # 念のため正規化してから判定
+def get_economy_type(sector) -> str:
+    if not isinstance(sector, str):
+        return "―"
+    s = normalize_sector(sector.strip())
     if s in DEFENSIVE_SECTORS:
         return "ディフェンシブ"
     if s in CYCLICAL_SECTORS:
@@ -500,8 +502,10 @@ _SECTOR_NORMALIZE = {
     "サービス":     "サービス業",
 }
 
-def normalize_sector(s: str) -> str:
+def normalize_sector(s) -> str:
     """略称で保存されている業種名を東証33業種正式名称に変換する"""
+    if not isinstance(s, str):
+        return ""
     return _SECTOR_NORMALIZE.get(s, s)
 
 
@@ -1613,7 +1617,7 @@ st.divider()
 # ─── ポートフォリオ一覧 ─────────────────────────────────────────
 st.subheader("保有銘柄一覧")
 
-display_df = df.drop(columns=["_div_months", "_annual_div_after_tax"], errors="ignore").copy()
+display_df = df.drop(columns=["_div_months", "_annual_div_after_tax", "高値52w"], errors="ignore").copy()
 fmt = {
     "取得単価": f"{cur}{{:,.2f}}",
     "現在株価": f"{cur}{{:,.2f}}",
@@ -1629,9 +1633,9 @@ fmt = {
 }
 def _color_gain(val):
     if val > 0:
-        return "color: red"
-    elif val < 0:
         return "color: green"
+    elif val < 0:
+        return "color: red"
     return ""
 
 def _color_vs_ref(col, ref_col):
