@@ -546,21 +546,48 @@ YJ_INDUSTRY_TO_SECTOR = {
 
 @st.cache_data(ttl=86400, show_spinner=False)
 def fetch_sector_jp(stock_code: str) -> str:
-    """Yahoo Finance Japan のプロフィールページから業種を取得"""
+    """Yahoo Finance Japan のプロフィールページから東証33業種を取得。
+    ① th/td パターン（BeautifulSoup）
+    ② dt/dd パターン（BeautifulSoup）
+    ③ ページテキスト regex（業種[分類] の直後に既知業種名）
+    """
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
     try:
         url = f"https://finance.yahoo.co.jp/quote/{stock_code}.T/profile"
         r = requests.get(url, headers=headers, timeout=10)
         r.encoding = "utf-8"
-        if r.status_code == 200:
-            soup = BeautifulSoup(r.text, "html.parser")
-            for th in soup.find_all("th"):
-                if "業種" in th.get_text(strip=True):
-                    td = th.find_next_sibling("td")
-                    if td:
-                        industry_raw = td.get_text(strip=True)
-                        # マッピングで東証業種に変換、なければそのまま返す
+        if r.status_code != 200:
+            return ""
+        page_text = r.text
+        soup = BeautifulSoup(page_text, "html.parser")
+
+        # ① th → sibling td（"業種分類" / "業種" どちらにも対応）
+        for th in soup.find_all("th"):
+            if "業種" in th.get_text(strip=True):
+                td = th.find_next_sibling("td")
+                if td:
+                    industry_raw = td.get_text(strip=True)
+                    if industry_raw:
                         return YJ_INDUSTRY_TO_SECTOR.get(industry_raw, industry_raw)
+
+        # ② dt → sibling dd
+        for dt in soup.find_all("dt"):
+            if "業種" in dt.get_text(strip=True):
+                dd = dt.find_next_sibling("dd")
+                if dd:
+                    industry_raw = dd.get_text(strip=True)
+                    if industry_raw:
+                        return YJ_INDUSTRY_TO_SECTOR.get(industry_raw, industry_raw)
+
+        # ③ ページテキスト regex（"業種" の近傍に既知業種名）
+        # 長い名前を先にチェックして部分マッチを防ぐ
+        known = sorted(YJ_INDUSTRY_TO_SECTOR.keys(), key=len, reverse=True)
+        pattern = r'業種[分類]*[\s\S]{0,40}?(' + '|'.join(re.escape(s) for s in known) + ')'
+        m = re.search(pattern, page_text)
+        if m:
+            industry_raw = m.group(1)
+            return YJ_INDUSTRY_TO_SECTOR.get(industry_raw, industry_raw)
+
     except Exception:
         pass
     return ""
