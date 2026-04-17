@@ -478,6 +478,32 @@ def get_economy_type(sector: str) -> str:
     return "―"
 
 
+# 旧略称 → 東証33業種正式名称 変換テーブル（保存済みデータの正規化用）
+_SECTOR_NORMALIZE = {
+    "石油・石炭":   "石油・石炭製品",
+    "ガラス・土石": "ガラス・土石製品",
+    "電気・ガス":   "電気・ガス業",
+    "陸運":         "陸運業",
+    "海運":         "海運業",
+    "空運":         "空運業",
+    "倉庫・運輸":   "倉庫・運輸関連業",
+    "情報・通信":   "情報・通信業",
+    "卸売":         "卸売業",
+    "小売":         "小売業",
+    "銀行":         "銀行業",
+    "証券・先物":   "証券、商品先物取引業",
+    "保険":         "保険業",
+    "その他金融":   "その他金融業",
+    "不動産":       "不動産業",
+    "建設":         "建設業",
+    "サービス":     "サービス業",
+}
+
+def normalize_sector(s: str) -> str:
+    """略称で保存されている業種名を東証33業種正式名称に変換する"""
+    return _SECTOR_NORMALIZE.get(s, s)
+
+
 # ─── 日本株 業種取得 ──────────────────────────────────────────
 
 # Yahoo Finance Japan の業種名 → 東証業種分類マッピング
@@ -891,7 +917,7 @@ def fetch_stock_info(ticker: str) -> dict:
             if quote_type == "ETF":
                 sector_jp = "その他ETF"
             elif "REIT" in name_upper or "リート" in name_upper:
-                sector_jp = "不動産"
+                sector_jp = "不動産業"
 
         return {
             "current_price": current_price,
@@ -1234,26 +1260,34 @@ def build_portfolio_df(holdings: list[dict]) -> pd.DataFrame:
                 split_ratio = csv_price / yf_price
                 annual_div = annual_div * split_ratio
 
-        # セクター: 保存値 → yfinance → Yahoo Finance Japan → 名称推定
-        sector = h.get("sector", "")
+        # セクター取得優先順:
+        #   日本株(.T): Yahoo Finance Japan（TSE33直接） → yfinance → 名称推定
+        #   米国株等:   保存値（正規化済） → yfinance → 名称推定
+        saved_sector = normalize_sector(h.get("sector", ""))
+        sector = ""
+        if h["ticker"].endswith(".T"):
+            # ① Yahoo Finance Japan（東証33業種を直接返す）
+            code_s = h["ticker"].replace(".T", "")
+            sector = fetch_sector_jp(code_s) or ""
+            # ② yfinance フォールバック
+            if not sector or sector == "未分類":
+                sector = info["sector_jp"] or ""
+        else:
+            # 海外株: 保存値（正規化後） → yfinance
+            sector = saved_sector if saved_sector and saved_sector != "未分類" else ""
+            if not sector:
+                sector = info["sector_jp"] or ""
+        # ③ 銘柄名から推定
         if not sector or sector == "未分類":
-            sector = info["sector_jp"] or ""
-        if not sector or sector == "未分類":
-            if h["ticker"].endswith(".T"):
-                code_s = h["ticker"].replace(".T", "")
-                sector = fetch_sector_jp(code_s) or ""
-        if not sector or sector == "未分類":
-            # 銘柄名にREIT/リート/インフラが含まれる場合は不動産
             name_check = (
                 h.get("name", "") + " " +
                 info.get("short_name", "") + " " +
                 info.get("long_name", "")
             ).upper()
-            # ETF判定を先に行う（REIT ETFはその他ETFに分類）
             if info.get("quote_type", "") == "ETF" or "ETF" in name_check:
                 sector = "その他ETF"
             elif "REIT" in name_check or "リート" in name_check or "INFRA" in name_check:
-                sector = "不動産"
+                sector = "不動産業"
             else:
                 sector = "未分類"
         h["sector"] = sector
