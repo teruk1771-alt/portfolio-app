@@ -2064,20 +2064,40 @@ with tab2:
                 monthly_stocks[m].append(name_label)
 
     month_df = pd.DataFrame({
-        "月": [f"{m}月" for m in range(1, 13)],
+        "月":           [f"{m}月" for m in range(1, 13)],
         "配当金(税引後)": [monthly_div[m] for m in range(1, 13)],
-        "銘柄": [", ".join(monthly_stocks[m]) if monthly_stocks[m] else "―" for m in range(1, 13)],
+        "銘柄":         [", ".join(monthly_stocks[m]) if monthly_stocks[m] else "―" for m in range(1, 13)],
     })
-    fig_cal = px.bar(
-        month_df, x="月", y="配当金(税引後)",
-        title="月別 受取配当金（税引後・概算）― 口座入金月ベース",
-        text_auto=",.0f",
-        hover_data={"銘柄": True},
-        color_discrete_sequence=["#3498db"],
+    # 金額テキスト：0円の月は非表示、それ以外は ¥X,XXX 形式
+    month_df["金額テキスト"] = month_df["配当金(税引後)"].apply(
+        lambda v: f"¥{v:,.0f}" if v > 0 else ""
     )
+
+    fig_cal = go.Figure(go.Bar(
+        x=month_df["月"],
+        y=month_df["配当金(税引後)"],
+        text=month_df["金額テキスト"],
+        textposition="outside",          # バー上部に表示
+        textfont=dict(size=13, color="#333333"),
+        marker_color="#3498db",
+        customdata=month_df["銘柄"],
+        hovertemplate="<b>%{x}</b><br>¥%{y:,.0f}<br>%{customdata}<extra></extra>",
+    ))
+    max_div = month_df["配当金(税引後)"].max() or 1
     fig_cal.update_layout(
-        yaxis=dict(title="円", fixedrange=True),
-        xaxis=dict(title="", fixedrange=True),
+        title="月別 受取配当金（税引後・概算）― 口座入金月ベース",
+        yaxis=dict(
+            title="",
+            tickprefix="¥",
+            tickformat=",.0f",
+            fixedrange=True,
+            range=[0, max_div * 1.3],    # テキストが切れないよう余白確保
+            showgrid=True, gridcolor="#eeeeee",
+        ),
+        xaxis=dict(title="", fixedrange=True, tickfont=dict(size=13)),
+        plot_bgcolor="white",
+        height=320,
+        margin=dict(t=50, b=10, l=10, r=10),
         dragmode=False,
     )
     st.plotly_chart(
