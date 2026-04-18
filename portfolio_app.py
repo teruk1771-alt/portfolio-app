@@ -1968,15 +1968,28 @@ with tab2:
             tickformat=",.0f",
             showgrid=True,
             gridcolor="#eeeeee",
+            fixedrange=True,
         ),
-        xaxis_title="",
+        xaxis=dict(
+            title="",
+            fixedrange=True,
+        ),
         plot_bgcolor="white",
         legend_title_text="",
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
         height=380,
         margin=dict(t=60, b=20),
+        dragmode=False,
     )
-    st.plotly_chart(fig_acct, use_container_width=True)
+    st.plotly_chart(
+        fig_acct,
+        use_container_width=True,
+        config={
+            "scrollZoom": False,
+            "doubleClick": False,
+            "displayModeBar": False,
+        },
+    )
 
     # 配当利回り比較
     yield_df = df[df["取得価格利回り"] > 0].copy()
@@ -2062,8 +2075,20 @@ with tab2:
         hover_data={"銘柄": True},
         color_discrete_sequence=["#3498db"],
     )
-    fig_cal.update_layout(yaxis_title="円", xaxis_title="")
-    st.plotly_chart(fig_cal, use_container_width=True)
+    fig_cal.update_layout(
+        yaxis=dict(title="円", fixedrange=True),
+        xaxis=dict(title="", fixedrange=True),
+        dragmode=False,
+    )
+    st.plotly_chart(
+        fig_cal,
+        use_container_width=True,
+        config={
+            "scrollZoom": False,
+            "doubleClick": False,
+            "displayModeBar": False,
+        },
+    )
 
     # 月別明細テーブル
     cal_table = month_df[month_df["配当金(税引後)"] > 0].copy()
