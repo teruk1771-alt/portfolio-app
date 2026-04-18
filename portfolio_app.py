@@ -2013,15 +2013,28 @@ with tab2:
         title="銘柄別 取得価格ベース配当利回り",
         xaxis=dict(
             tickformat=".1%",
-            range=[0, max_yield * 1.35],  # テキスト表示のための余白
+            range=[0, max_yield * 1.35],
             showgrid=True, gridcolor="#eeeeee",
+            fixedrange=True,       # ズーム無効
         ),
-        yaxis_title="",
+        yaxis=dict(
+            title="",
+            fixedrange=True,       # ズーム無効
+        ),
         height=max(250, len(yield_df) * 32 + 80),
         margin=dict(l=10, r=20, t=50, b=20),
         plot_bgcolor="white",
+        dragmode=False,            # ドラッグ操作無効
     )
-    st.plotly_chart(fig_yield, use_container_width=True)
+    st.plotly_chart(
+        fig_yield,
+        use_container_width=True,
+        config={
+            "scrollZoom": False,       # スクロールズーム無効
+            "doubleClick": False,      # ダブルタップリセット無効
+            "displayModeBar": False,   # ツールバー非表示
+        },
+    )
 
     # 月別配当カレンダー（支払月ベース）
     st.subheader("配当月カレンダー（口座入金月）")
