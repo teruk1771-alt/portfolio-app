@@ -403,8 +403,12 @@ def screen_stock(stock_code: str) -> dict | None:
     latest_equity = equity_ratio_raw[-1] if equity_ratio_raw else 0
     results["自己資本比率40%↑"] = all(v >= 40 for v in equity_ratio_raw) if equity_ratio_raw else False
 
-    # ⑤ 営業CFが赤字なし
-    results["営業CF黒字"] = all(v > 0 for v in op_cf) if op_cf else False
+    # ⑤ 営業CFが9割以上で黒字（赤字が1〜2年以内なら許容）
+    if op_cf:
+        positive_ratio = sum(1 for v in op_cf if v > 0) / len(op_cf)
+        results["営業CF黒字"] = positive_ratio >= 0.9
+    else:
+        results["営業CF黒字"] = False
 
     # ⑥ 現金が全体的に右肩上がり
     results["現金増加"] = _is_uptrend(cash) if len(cash) >= 3 else False
@@ -2171,7 +2175,7 @@ with tab4:
     | 2 | EPSが全体的に右肩上がり |
     | 3 | 営業利益率が8%以上（10年平均） |
     | 4 | 自己資本比率が40%以上（直近） |
-    | 5 | 営業CFが赤字なし |
+    | 5 | 営業CFが9割以上で黒字（過去データのうち90%以上が黒字） |
     | 6 | 現金等が全体的に右肩上がり |
     | 7 | 一株配当が無配・減配なく増配傾向 |
     | 8 | 配当性向が50%以下（10年平均） |
@@ -2279,7 +2283,7 @@ with tab4:
             "EPS成長":        "EPS↑",
             "営業利益率10%↑": "営利\n10%↑",
             "自己資本比率40%↑":"自己資\n40%↑",
-            "営業CF黒字":     "CF\n黒字",
+            "営業CF黒字":     "CF\n9割↑",
             "現金増加":       "現金↑",
             "連続増配":       "増配",
             "配当性向50%↓":  "性向\n50%↓",
