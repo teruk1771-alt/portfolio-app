@@ -710,17 +710,31 @@ def fetch_company_details(code: str) -> dict:
         prof_resp.encoding = "utf-8"
         if prof_resp.status_code == 200:
             page_text = prof_resp.text
-            # Next.js JSONペイロードから正規表現で設立年月日を取得
+            prof_soup = BeautifulSoup(page_text, "html.parser")
+
+            # 設立年月日 ① th → sibling td（BeautifulSoup）
+            if not result["founded"]:
+                for th in prof_soup.find_all("th"):
+                    if "設立" in th.get_text(strip=True):
+                        td = th.find_next_sibling("td")
+                        if td:
+                            text = td.get_text(strip=True)
+                            m = re.search(r'([0-9]{4}年[0-9]{1,2}月[0-9]{1,2}日)', text)
+                            if m:
+                                result["founded"] = m.group(1)
+                                break
+
+            # 設立年月日 ② regex fallback（[\s\S] で改行を跨ぐ — . は改行に非マッチのため）
             if not result["founded"]:
                 m = re.search(
-                    r'設立年月日.{0,60}?([0-9]{4}年[0-9]{1,2}月[0-9]{1,2}日)',
+                    r'設立年月日[\s\S]{0,60}?([0-9]{4}年[0-9]{1,2}月[0-9]{1,2}日)',
                     page_text,
                 )
                 if m:
                     result["founded"] = m.group(1)
+
             # 業種も同様に取得
             if not result["industry_jp"]:
-                prof_soup = BeautifulSoup(page_text, "html.parser")
                 for th in prof_soup.find_all("th"):
                     label = th.get_text(strip=True)
                     td = th.find_next_sibling("td")
@@ -728,7 +742,7 @@ def fetch_company_details(code: str) -> dict:
                         continue
                     p = td.find("p")
                     text = (p.get_text(strip=True) if p else td.get_text(strip=True))
-                    if label == "業種":
+                    if label in ("業種", "業種分類"):
                         result["industry_jp"] = text
                         break
     except Exception:
