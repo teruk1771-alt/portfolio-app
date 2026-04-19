@@ -395,9 +395,9 @@ def screen_stock(stock_code: str) -> dict | None:
     # ② EPSが全体的に右肩上がり
     results["EPS成長"] = _is_uptrend(eps)
 
-    # ③ 営業利益率10%以上（10年平均）
+    # ③ 営業利益率8%以上（10年平均）
     avg_margin = sum(op_margin_raw) / len(op_margin_raw) if op_margin_raw else 0
-    results["営業利益率10%↑"] = avg_margin >= 10
+    results["営業利益率8%↑"] = avg_margin >= 8
 
     # ④ 自己資本比率40%以上（10年すべて）
     latest_equity = equity_ratio_raw[-1] if equity_ratio_raw else 0
@@ -2169,7 +2169,7 @@ with tab4:
     |---|------|
     | 1 | 売上が全体的に右肩上がり |
     | 2 | EPSが全体的に右肩上がり |
-    | 3 | 営業利益率が10%以上（10年平均） |
+    | 3 | 営業利益率が8%以上（10年平均） |
     | 4 | 自己資本比率が40%以上（直近） |
     | 5 | 営業CFが赤字なし |
     | 6 | 現金等が全体的に右肩上がり |
@@ -2241,7 +2241,7 @@ with tab4:
             company_details = {r["code"]: fetch_company_details(r["code"]) for r in top10}
 
         criteria_names = [
-            "売上成長", "EPS成長", "営業利益率10%↑", "自己資本比率40%↑",
+            "売上成長", "EPS成長", "営業利益率8%↑", "自己資本比率40%↑",
             "営業CF黒字", "現金増加", "連続増配", "配当性向50%↓",
         ]
         summary_rows = []
