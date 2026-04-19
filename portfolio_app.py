@@ -2250,9 +2250,9 @@ with tab4:
     # 結果表示
     if "screen_results" in st.session_state:
         results = st.session_state["screen_results"]
-        top10 = results[:10]
+        top10 = results[:20]
 
-        st.subheader(f"おすすめ上位{min(10, len(top10))}社（新規投資候補）")
+        st.subheader(f"おすすめ上位{min(20, len(top10))}社（新規投資候補）")
 
         # 企業詳細情報を一括取得（キャッシュ済みなので高速）
         with st.spinner("企業情報（業種・PER・PBR・概要）を取得中..."):
